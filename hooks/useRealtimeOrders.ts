@@ -76,18 +76,13 @@ export function useRealtimeOrders({
           .select(`
             *,
             restaurant:restaurants(*),
-            user:users(*),
-            delivery_address_info:user_addresses(*),
             order_items(
               *,
               menu_item:menu_items(*)
             ),
             delivery:deliveries(
               *,
-              driver:delivery_drivers(
-                *,
-                user:users(*)
-              )
+              driver:delivery_drivers(*)
             )
           `);
 

@@ -4,16 +4,9 @@ import { Order, OrderFilters } from '@/types/database';
 export async function createOrder(
   userId: string,
   restaurantId: string,
-  deliveryAddressId: string | null,
   deliveryAddress: string,
-  items: { menuItemId: string; quantity: number; unitPrice: number; specialInstructions?: string }[],
-  subtotal: number,
-  deliveryFee: number,
-  taxAmount: number,
-  tipAmount: number,
-  total: number,
-  paymentMethod: string = 'card',
-  deliveryInstructions?: string
+  items: { menuItemId: string; quantity: number; price: number }[],
+  total: number
 ): Promise<Order | null> {
   // Start a transaction
   const { data: order, error: orderError } = await supabase
@@ -21,17 +14,9 @@ export async function createOrder(
     .insert({
       user_id: userId,
       restaurant_id: restaurantId,
-      delivery_address_id: deliveryAddressId,
       delivery_address: deliveryAddress,
-      subtotal,
-      delivery_fee: deliveryFee,
-      tax_amount: taxAmount,
-      tip_amount: tipAmount,
       total,
-      payment_method: paymentMethod,
-      delivery_instructions: deliveryInstructions,
-      status: 'pending',
-      payment_status: 'pending'
+      status: 'preparing'
     })
     .select()
     .single();
@@ -46,9 +31,7 @@ export async function createOrder(
     order_id: order.id,
     menu_item_id: item.menuItemId,
     quantity: item.quantity,
-    unit_price: item.unitPrice,
-    total_price: item.unitPrice * item.quantity,
-    special_instructions: item.specialInstructions
+    price: item.price
   }));
 
   const { error: itemsError } = await supabase
@@ -62,22 +45,6 @@ export async function createOrder(
     return null;
   }
 
-  // Create delivery record
-  const { error: deliveryError } = await supabase
-    .from('deliveries')
-    .insert({
-      order_id: order.id,
-      pickup_address: deliveryAddress, // This should be restaurant address
-      delivery_address: deliveryAddress,
-      delivery_fee: deliveryFee,
-      driver_earnings: deliveryFee * 0.8, // 80% to driver
-      status: 'pending'
-    });
-
-  if (deliveryError) {
-    console.error('Error creating delivery:', deliveryError);
-  }
-
   return order;
 }
 
@@ -87,17 +54,13 @@ export async function getUserOrders(userId: string, filters?: OrderFilters): Pro
     .select(`
       *,
       restaurant:restaurants(*),
-      delivery_address_info:user_addresses(*),
       order_items(
         *,
         menu_item:menu_items(*)
       ),
       delivery:deliveries(
         *,
-        driver:delivery_drivers(
-          *,
-          user:users(*)
-        )
+        driver:delivery_drivers(*)
       )
     `)
     .eq('user_id', userId);
@@ -141,18 +104,13 @@ export async function getRestaurantOrders(restaurantId: string, filters?: OrderF
     .from('orders')
     .select(`
       *,
-      user:users(*),
-      delivery_address_info:user_addresses(*),
       order_items(
         *,
         menu_item:menu_items(*)
       ),
       delivery:deliveries(
         *,
-        driver:delivery_drivers(
-          *,
-          user:users(*)
-        )
+        driver:delivery_drivers(*)
       )
     `)
     .eq('restaurant_id', restaurantId);
@@ -185,18 +143,13 @@ export async function getOrderById(orderId: string): Promise<Order | null> {
     .select(`
       *,
       restaurant:restaurants(*),
-      user:users(*),
-      delivery_address_info:user_addresses(*),
       order_items(
         *,
         menu_item:menu_items(*)
       ),
       delivery:deliveries(
         *,
-        driver:delivery_drivers(
-          *,
-          user:users(*)
-        )
+        driver:delivery_drivers(*)
       )
     `)
     .eq('id', orderId)

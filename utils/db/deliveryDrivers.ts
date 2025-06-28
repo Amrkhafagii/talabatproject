@@ -4,10 +4,7 @@ import { DeliveryDriver } from '@/types/database';
 export async function getDriverByUserId(userId: string): Promise<DeliveryDriver | null> {
   const { data, error } = await supabase
     .from('delivery_drivers')
-    .select(`
-      *,
-      user:users(*)
-    `)
+    .select('*')
     .eq('user_id', userId)
     .single();
 
@@ -21,29 +18,18 @@ export async function getDriverByUserId(userId: string): Promise<DeliveryDriver 
 
 export async function createDriverProfile(
   userId: string,
-  licenseNumber: string,
-  vehicleType: 'bicycle' | 'motorcycle' | 'car' | 'scooter',
-  vehicleDetails?: {
-    make?: string;
-    model?: string;
-    year?: number;
-    color?: string;
-    licensePlate?: string;
-  }
+  name: string,
+  phone: string,
+  vehicleType: 'bicycle' | 'motorcycle' | 'car' | 'scooter' = 'car'
 ): Promise<DeliveryDriver | null> {
   const { data, error } = await supabase
     .from('delivery_drivers')
     .insert({
       user_id: userId,
-      license_number: licenseNumber,
+      name,
+      phone,
       vehicle_type: vehicleType,
-      vehicle_make: vehicleDetails?.make,
-      vehicle_model: vehicleDetails?.model,
-      vehicle_year: vehicleDetails?.year,
-      vehicle_color: vehicleDetails?.color,
-      license_plate: vehicleDetails?.licensePlate,
-      is_online: false,
-      is_available: true
+      is_online: false
     })
     .select()
     .single();
@@ -57,14 +43,11 @@ export async function createDriverProfile(
 }
 
 export async function updateDriverOnlineStatus(driverId: string, isOnline: boolean): Promise<boolean> {
-  const updateData: any = { 
-    is_online: isOnline,
-    last_location_update: new Date().toISOString()
-  };
-
   const { error } = await supabase
     .from('delivery_drivers')
-    .update(updateData)
+    .update({ 
+      is_online: isOnline
+    })
     .eq('id', driverId);
 
   if (error) {
@@ -77,15 +60,12 @@ export async function updateDriverOnlineStatus(driverId: string, isOnline: boole
 
 export async function updateDriverLocation(
   driverId: string, 
-  latitude: number, 
-  longitude: number
+  currentLocation: string
 ): Promise<boolean> {
   const { error } = await supabase
     .from('delivery_drivers')
     .update({
-      current_latitude: latitude,
-      current_longitude: longitude,
-      last_location_update: new Date().toISOString()
+      current_location: currentLocation
     })
     .eq('id', driverId);
 
