@@ -1,7 +1,7 @@
 import { supabase } from '../supabase';
 import { User } from '@/types/database';
 
-async function createUserProfile(
+export async function createUserProfile(
   userId: string,
   email: string,
   fullName?: string,
@@ -31,7 +31,7 @@ export async function getUserProfile(userId: string): Promise<User | null> {
     .from('users')
     .select('*')
     .eq('id', userId)
-    .single();
+    .maybeSingle(); // Use maybeSingle() instead of single() to handle cases where no row exists
 
   if (error) {
     console.error('Error fetching user profile:', error);
