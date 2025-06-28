@@ -7,26 +7,23 @@ export default function TabLayout() {
   const { user, userType, loading } = useAuth();
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.replace('/(auth)/welcome');
-    }
-  }, [user, loading]);
-
-  useEffect(() => {
-    // If userType is invalid or null, redirect to welcome
-    if (!loading && user && !userType) {
-      router.replace('/(auth)/welcome');
+    // Handle all navigation logic in a single useEffect
+    if (!loading) {
+      if (!user) {
+        router.replace('/(auth)/welcome');
+        return;
+      }
+      
+      // If userType is invalid or null, redirect to welcome
+      if (!userType || !['customer', 'restaurant', 'delivery'].includes(userType)) {
+        router.replace('/(auth)/welcome');
+        return;
+      }
     }
   }, [user, userType, loading]);
 
-  if (loading || !user) {
-    return null;
-  }
-
-  // Ensure we have a valid userType before rendering tabs
-  if (!userType || !['customer', 'restaurant', 'delivery'].includes(userType)) {
-    // Redirect to welcome if userType is invalid
-    router.replace('/(auth)/welcome');
+  // Return null while loading or during redirects
+  if (loading || !user || !userType || !['customer', 'restaurant', 'delivery'].includes(userType)) {
     return null;
   }
 
