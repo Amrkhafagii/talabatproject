@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Mail, ArrowLeft, CircleCheck as CheckCircle } from 'lucide-react-native';
@@ -87,53 +87,66 @@ export default function ForgotPassword() {
       <SafeAreaView style={styles.container}>
         <Header title="Check Your Email" showBackButton />
         
-        <View style={styles.content}>
-          <Card style={styles.successCard}>
-            <View style={styles.successIcon}>
-              <CheckCircle size={64} color="#10B981" />
+        <KeyboardAvoidingView 
+          style={styles.keyboardAvoidingView}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <ScrollView 
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            bounces={false}
+          >
+            <View style={styles.content}>
+              <Card style={styles.successCard}>
+                <View style={styles.successIcon}>
+                  <CheckCircle size={64} color="#10B981" />
+                </View>
+                
+                <Text style={styles.successTitle}>Email Sent!</Text>
+                <Text style={styles.successMessage}>
+                  We've sent a password reset link to{' '}
+                  <Text style={styles.emailText}>{getValues('email')}</Text>
+                </Text>
+                
+                <View style={styles.instructionsContainer}>
+                  <Text style={styles.instructionsTitle}>Next steps:</Text>
+                  <Text style={styles.instructionItem}>1. Check your email inbox</Text>
+                  <Text style={styles.instructionItem}>2. Click the reset link in the email</Text>
+                  <Text style={styles.instructionItem}>3. Create a new password</Text>
+                  <Text style={styles.instructionItem}>4. Sign in with your new password</Text>
+                </View>
+
+                <Text style={styles.noteText}>
+                  The reset link will expire in 1 hour for security reasons.
+                </Text>
+              </Card>
+
+              <View style={styles.actionButtons}>
+                <Button
+                  title="Resend Email"
+                  onPress={resendEmail}
+                  variant="outline"
+                  disabled={loading}
+                  style={styles.resendButton}
+                />
+                
+                <Button
+                  title="Back to Sign In"
+                  onPress={() => router.replace('/login')}
+                  style={styles.backButton}
+                />
+              </View>
+
+              <View style={styles.helpContainer}>
+                <Text style={styles.helpText}>
+                  Didn't receive the email? Check your spam folder or contact support.
+                </Text>
+              </View>
             </View>
-            
-            <Text style={styles.successTitle}>Email Sent!</Text>
-            <Text style={styles.successMessage}>
-              We've sent a password reset link to{' '}
-              <Text style={styles.emailText}>{getValues('email')}</Text>
-            </Text>
-            
-            <View style={styles.instructionsContainer}>
-              <Text style={styles.instructionsTitle}>Next steps:</Text>
-              <Text style={styles.instructionItem}>1. Check your email inbox</Text>
-              <Text style={styles.instructionItem}>2. Click the reset link in the email</Text>
-              <Text style={styles.instructionItem}>3. Create a new password</Text>
-              <Text style={styles.instructionItem}>4. Sign in with your new password</Text>
-            </View>
-
-            <Text style={styles.noteText}>
-              The reset link will expire in 1 hour for security reasons.
-            </Text>
-          </Card>
-
-          <View style={styles.actionButtons}>
-            <Button
-              title="Resend Email"
-              onPress={resendEmail}
-              variant="outline"
-              disabled={loading}
-              style={styles.resendButton}
-            />
-            
-            <Button
-              title="Back to Sign In"
-              onPress={() => router.replace('/login')}
-              style={styles.backButton}
-            />
-          </View>
-
-          <View style={styles.helpContainer}>
-            <Text style={styles.helpText}>
-              Didn't receive the email? Check your spam folder or contact support.
-            </Text>
-          </View>
-        </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     );
   }
@@ -142,56 +155,70 @@ export default function ForgotPassword() {
     <SafeAreaView style={styles.container}>
       <Header title="Reset Password" showBackButton />
       
-      <View style={styles.content}>
-        <View style={styles.headerSection}>
-          <View style={styles.iconContainer}>
-            <Mail size={48} color="#FF6B35" />
-          </View>
-          <Text style={styles.title}>Forgot your password?</Text>
-          <Text style={styles.subtitle}>
-            No worries! Enter your email address and we'll send you a link to reset your password.
-          </Text>
-        </View>
-
-        <View style={styles.formSection}>
-          {/* General form error */}
-          {formError ? (
-            <View style={styles.errorContainer}>
-              <Text style={styles.errorText}>{formError}</Text>
+      <KeyboardAvoidingView 
+        style={styles.keyboardAvoidingView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          bounces={false}
+        >
+          <View style={styles.content}>
+            <View style={styles.headerSection}>
+              <View style={styles.iconContainer}>
+                <Mail size={48} color="#FF6B35" />
+              </View>
+              <Text style={styles.title}>Forgot your password?</Text>
+              <Text style={styles.subtitle}>
+                No worries! Enter your email address and we'll send you a link to reset your password.
+              </Text>
             </View>
-          ) : null}
 
-          <FormField
-            control={control}
-            name="email"
-            label="Email Address"
-            placeholder="Enter your email address"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoComplete="email"
-          />
+            <View style={styles.formSection}>
+              {/* General form error */}
+              {formError ? (
+                <View style={styles.errorContainer}>
+                  <Text style={styles.errorText}>{formError}</Text>
+                </View>
+              ) : null}
 
-          <Button
-            title={loading ? "Sending Reset Link..." : "Send Reset Link"}
-            onPress={handleSubmit(onSubmit)}
-            disabled={loading || !isValid}
-            style={styles.submitButton}
-          />
-        </View>
+              <FormField
+                control={control}
+                name="email"
+                label="Email Address"
+                placeholder="Enter your email address"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+              />
 
-        <View style={styles.footerSection}>
-          <Text style={styles.footerText}>Remember your password? </Text>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Text style={styles.footerLink}>Back to Sign In</Text>
-          </TouchableOpacity>
-        </View>
+              <Button
+                title={loading ? "Sending Reset Link..." : "Send Reset Link"}
+                onPress={handleSubmit(onSubmit)}
+                disabled={loading || !isValid}
+                style={styles.submitButton}
+              />
+            </View>
 
-        <View style={styles.securityNote}>
-          <Text style={styles.securityText}>
-            🔒 For your security, password reset links expire after 1 hour and can only be used once.
-          </Text>
-        </View>
-      </View>
+            <View style={styles.footerSection}>
+              <Text style={styles.footerText}>Remember your password? </Text>
+              <TouchableOpacity onPress={() => router.back()}>
+                <Text style={styles.footerLink}>Back to Sign In</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.securityNote}>
+              <Text style={styles.securityText}>
+                🔒 For your security, password reset links expire after 1 hour and can only be used once.
+              </Text>
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -201,10 +228,21 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F9FAFB',
   },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 40,
+  },
   content: {
     flex: 1,
     paddingHorizontal: 24,
     paddingTop: 32,
+    minHeight: '100%',
   },
   headerSection: {
     alignItems: 'center',

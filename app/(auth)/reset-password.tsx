@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Lock, Eye, EyeOff, CircleCheck as CheckCircle } from 'lucide-react-native';
@@ -141,123 +141,137 @@ export default function ResetPassword() {
     <SafeAreaView style={styles.container}>
       <Header title="Reset Password" />
       
-      <View style={styles.content}>
-        <View style={styles.headerSection}>
-          <View style={styles.iconContainer}>
-            <Lock size={48} color="#FF6B35" />
+      <KeyboardAvoidingView 
+        style={styles.keyboardAvoidingView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          bounces={false}
+        >
+          <View style={styles.content}>
+            <View style={styles.headerSection}>
+              <View style={styles.iconContainer}>
+                <Lock size={48} color="#FF6B35" />
+              </View>
+              <Text style={styles.title}>Create New Password</Text>
+              <Text style={styles.subtitle}>
+                Please create a strong password that you haven't used before.
+              </Text>
+            </View>
+
+            <View style={styles.formSection}>
+              {/* General form error */}
+              {formError ? (
+                <View style={styles.errorContainer}>
+                  <Text style={styles.errorText}>{formError}</Text>
+                </View>
+              ) : null}
+
+              <FormField
+                control={control}
+                name="password"
+                label="New Password"
+                placeholder="Enter your new password"
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoComplete="new-password"
+                rightElement={
+                  <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                    {showPassword ? (
+                      <EyeOff size={20} color="#6B7280" />
+                    ) : (
+                      <Eye size={20} color="#6B7280" />
+                    )}
+                  </TouchableOpacity>
+                }
+              />
+
+              {/* Password Strength Indicator */}
+              {passwordStrength && (
+                <View style={styles.passwordStrengthContainer}>
+                  <View style={styles.strengthHeader}>
+                    <Text style={styles.strengthLabel}>Password Strength:</Text>
+                    <Text style={[styles.strengthValue, { color: passwordStrength.color }]}>
+                      {passwordStrength.label}
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.strengthBar}>
+                    {[1, 2, 3, 4, 5].map((level) => (
+                      <View
+                        key={level}
+                        style={[
+                          styles.strengthSegment,
+                          {
+                            backgroundColor: level <= passwordStrength.score 
+                              ? passwordStrength.color 
+                              : '#E5E7EB'
+                          }
+                        ]}
+                      />
+                    ))}
+                  </View>
+
+                  <View style={styles.strengthChecks}>
+                    <Text style={[styles.checkItem, passwordStrength.checks.length && styles.checkPassed]}>
+                      ✓ At least 8 characters
+                    </Text>
+                    <Text style={[styles.checkItem, passwordStrength.checks.lowercase && styles.checkPassed]}>
+                      ✓ One lowercase letter
+                    </Text>
+                    <Text style={[styles.checkItem, passwordStrength.checks.uppercase && styles.checkPassed]}>
+                      ✓ One uppercase letter
+                    </Text>
+                    <Text style={[styles.checkItem, passwordStrength.checks.number && styles.checkPassed]}>
+                      ✓ One number
+                    </Text>
+                    <Text style={[styles.checkItem, passwordStrength.checks.special && styles.checkPassed]}>
+                      ✓ One special character
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              <FormField
+                control={control}
+                name="confirmPassword"
+                label="Confirm New Password"
+                placeholder="Confirm your new password"
+                secureTextEntry={!showConfirmPassword}
+                autoCapitalize="none"
+                autoComplete="new-password"
+                rightElement={
+                  <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+                    {showConfirmPassword ? (
+                      <EyeOff size={20} color="#6B7280" />
+                    ) : (
+                      <Eye size={20} color="#6B7280" />
+                    )}
+                  </TouchableOpacity>
+                }
+              />
+
+              <Button
+                title={loading ? "Updating Password..." : "Update Password"}
+                onPress={handleSubmit(onSubmit)}
+                disabled={loading || !isValid}
+                style={styles.submitButton}
+              />
+            </View>
+
+            <View style={styles.securityNote}>
+              <Text style={styles.securityText}>
+                🔒 Make sure to use a password that's unique to this account and not used elsewhere.
+              </Text>
+            </View>
           </View>
-          <Text style={styles.title}>Create New Password</Text>
-          <Text style={styles.subtitle}>
-            Please create a strong password that you haven't used before.
-          </Text>
-        </View>
-
-        <View style={styles.formSection}>
-          {/* General form error */}
-          {formError ? (
-            <View style={styles.errorContainer}>
-              <Text style={styles.errorText}>{formError}</Text>
-            </View>
-          ) : null}
-
-          <FormField
-            control={control}
-            name="password"
-            label="New Password"
-            placeholder="Enter your new password"
-            secureTextEntry={!showPassword}
-            autoCapitalize="none"
-            autoComplete="new-password"
-            rightElement={
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                {showPassword ? (
-                  <EyeOff size={20} color="#6B7280" />
-                ) : (
-                  <Eye size={20} color="#6B7280" />
-                )}
-              </TouchableOpacity>
-            }
-          />
-
-          {/* Password Strength Indicator */}
-          {passwordStrength && (
-            <View style={styles.passwordStrengthContainer}>
-              <View style={styles.strengthHeader}>
-                <Text style={styles.strengthLabel}>Password Strength:</Text>
-                <Text style={[styles.strengthValue, { color: passwordStrength.color }]}>
-                  {passwordStrength.label}
-                </Text>
-              </View>
-              
-              <View style={styles.strengthBar}>
-                {[1, 2, 3, 4, 5].map((level) => (
-                  <View
-                    key={level}
-                    style={[
-                      styles.strengthSegment,
-                      {
-                        backgroundColor: level <= passwordStrength.score 
-                          ? passwordStrength.color 
-                          : '#E5E7EB'
-                      }
-                    ]}
-                  />
-                ))}
-              </View>
-
-              <View style={styles.strengthChecks}>
-                <Text style={[styles.checkItem, passwordStrength.checks.length && styles.checkPassed]}>
-                  ✓ At least 8 characters
-                </Text>
-                <Text style={[styles.checkItem, passwordStrength.checks.lowercase && styles.checkPassed]}>
-                  ✓ One lowercase letter
-                </Text>
-                <Text style={[styles.checkItem, passwordStrength.checks.uppercase && styles.checkPassed]}>
-                  ✓ One uppercase letter
-                </Text>
-                <Text style={[styles.checkItem, passwordStrength.checks.number && styles.checkPassed]}>
-                  ✓ One number
-                </Text>
-                <Text style={[styles.checkItem, passwordStrength.checks.special && styles.checkPassed]}>
-                  ✓ One special character
-                </Text>
-              </View>
-            </View>
-          )}
-
-          <FormField
-            control={control}
-            name="confirmPassword"
-            label="Confirm New Password"
-            placeholder="Confirm your new password"
-            secureTextEntry={!showConfirmPassword}
-            autoCapitalize="none"
-            autoComplete="new-password"
-            rightElement={
-              <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
-                {showConfirmPassword ? (
-                  <EyeOff size={20} color="#6B7280" />
-                ) : (
-                  <Eye size={20} color="#6B7280" />
-                )}
-              </TouchableOpacity>
-            }
-          />
-
-          <Button
-            title={loading ? "Updating Password..." : "Update Password"}
-            onPress={handleSubmit(onSubmit)}
-            disabled={loading || !isValid}
-            style={styles.submitButton}
-          />
-        </View>
-
-        <View style={styles.securityNote}>
-          <Text style={styles.securityText}>
-            🔒 Make sure to use a password that's unique to this account and not used elsewhere.
-          </Text>
-        </View>
-      </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -267,10 +281,21 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F9FAFB',
   },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 40,
+  },
   content: {
     flex: 1,
     paddingHorizontal: 24,
     paddingTop: 32,
+    minHeight: '100%',
   },
   headerSection: {
     alignItems: 'center',

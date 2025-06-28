@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Eye, EyeOff } from 'lucide-react-native';
@@ -78,91 +78,105 @@ export default function Login() {
     <SafeAreaView style={styles.container}>
       <Header title="Welcome Back" showBackButton />
       
-      <View style={styles.content}>
-        <View style={styles.welcomeSection}>
-          <Text style={styles.welcomeTitle}>Sign in to your account</Text>
-          <Text style={styles.welcomeSubtitle}>
-            Enter your credentials to access your account
-          </Text>
-        </View>
-
-        <View style={styles.formSection}>
-          {/* General form error */}
-          {formError ? (
-            <View style={styles.errorContainer}>
-              <Text style={styles.errorText}>{formError}</Text>
+      <KeyboardAvoidingView 
+        style={styles.keyboardAvoidingView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          bounces={false}
+        >
+          <View style={styles.content}>
+            <View style={styles.welcomeSection}>
+              <Text style={styles.welcomeTitle}>Sign in to your account</Text>
+              <Text style={styles.welcomeSubtitle}>
+                Enter your credentials to access your account
+              </Text>
             </View>
-          ) : null}
 
-          <FormField
-            control={control}
-            name="email"
-            label="Email"
-            placeholder="Enter your email"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoComplete="email"
-            style={styles.inputContainer}
-          />
+            <View style={styles.formSection}>
+              {/* General form error */}
+              {formError ? (
+                <View style={styles.errorContainer}>
+                  <Text style={styles.errorText}>{formError}</Text>
+                </View>
+              ) : null}
 
-          <FormField
-            control={control}
-            name="password"
-            label="Password"
-            placeholder="Enter your password"
-            secureTextEntry={!showPassword}
-            autoCapitalize="none"
-            autoComplete="password"
-            style={styles.inputContainer}
-            rightElement={
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                {showPassword ? (
-                  <EyeOff size={20} color="#6B7280" />
-                ) : (
-                  <Eye size={20} color="#6B7280" />
-                )}
+              <FormField
+                control={control}
+                name="email"
+                label="Email"
+                placeholder="Enter your email"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+                style={styles.inputContainer}
+              />
+
+              <FormField
+                control={control}
+                name="password"
+                label="Password"
+                placeholder="Enter your password"
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoComplete="password"
+                style={styles.inputContainer}
+                rightElement={
+                  <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                    {showPassword ? (
+                      <EyeOff size={20} color="#6B7280" />
+                    ) : (
+                      <Eye size={20} color="#6B7280" />
+                    )}
+                  </TouchableOpacity>
+                }
+              />
+
+              {/* Remember Me Toggle */}
+              <FormToggle
+                control={control}
+                name="rememberMe"
+                label="Remember me"
+                description="Keep me signed in on this device"
+                style={styles.rememberMeContainer}
+              />
+
+              <TouchableOpacity 
+                style={styles.forgotPassword}
+                onPress={() => router.push('/forgot-password')}
+              >
+                <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
               </TouchableOpacity>
-            }
-          />
 
-          {/* Remember Me Toggle */}
-          <FormToggle
-            control={control}
-            name="rememberMe"
-            label="Remember me"
-            description="Keep me signed in on this device"
-            style={styles.rememberMeContainer}
-          />
+              <Button
+                title={loading ? "Signing In..." : "Sign In"}
+                onPress={handleSubmit(onSubmit)}
+                disabled={loading || !isValid}
+                style={styles.signInButton}
+              />
+            </View>
 
-          <TouchableOpacity 
-            style={styles.forgotPassword}
-            onPress={() => router.push('/forgot-password')}
-          >
-            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-          </TouchableOpacity>
+            <View style={styles.signUpContainer}>
+              <Text style={styles.signUpText}>Don't have an account? </Text>
+              <TouchableOpacity onPress={() => router.push('/signup')}>
+                <Text style={styles.signUpLink}>Sign Up</Text>
+              </TouchableOpacity>
+            </View>
 
-          <Button
-            title={loading ? "Signing In..." : "Sign In"}
-            onPress={handleSubmit(onSubmit)}
-            disabled={loading || !isValid}
-            style={styles.signInButton}
-          />
-        </View>
-
-        <View style={styles.signUpContainer}>
-          <Text style={styles.signUpText}>Don't have an account? </Text>
-          <TouchableOpacity onPress={() => router.push('/signup')}>
-            <Text style={styles.signUpLink}>Sign Up</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Session Info */}
-        <View style={styles.sessionInfo}>
-          <Text style={styles.sessionInfoText}>
-            🔒 Your session will be securely maintained across app restarts for your convenience.
-          </Text>
-        </View>
-      </View>
+            {/* Session Info */}
+            <View style={styles.sessionInfo}>
+              <Text style={styles.sessionInfoText}>
+                🔒 Your session will be securely maintained across app restarts for your convenience.
+              </Text>
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -172,10 +186,21 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F9FAFB',
   },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 40,
+  },
   content: {
     flex: 1,
     paddingHorizontal: 24,
     paddingTop: 32,
+    minHeight: '100%',
   },
   welcomeSection: {
     marginBottom: 40,

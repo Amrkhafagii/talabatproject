@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { User, Store, Truck, Eye, EyeOff } from 'lucide-react-native';
@@ -108,112 +108,126 @@ export default function SignUp() {
     <SafeAreaView style={styles.container}>
       <Header title="Create Account" showBackButton />
       
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.welcomeSection}>
-          <Text style={styles.welcomeTitle}>Join FoodieExpress</Text>
-          <Text style={styles.welcomeSubtitle}>
-            Create your account to get started
-          </Text>
-        </View>
-
-        {/* General form error */}
-        {formError ? (
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>{formError}</Text>
-          </View>
-        ) : null}
-
-        {/* User Type Selection */}
-        <View style={styles.section}>
-          <FormSelect
-            control={control}
-            name="userType"
-            label="I want to"
-            options={userTypeOptions}
-          />
-          
-          {selectedUserType && (
-            <View style={styles.userTypePreview}>
-              <View style={styles.userTypeIcon}>
-                {React.createElement(getUserTypeIcon(selectedUserType), {
-                  size: 24,
-                  color: '#FF6B35'
-                })}
-              </View>
-              <Text style={styles.userTypeDescription}>
-                {getUserTypeDescription(selectedUserType)}
+      <KeyboardAvoidingView 
+        style={styles.keyboardAvoidingView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          bounces={false}
+        >
+          <View style={styles.content}>
+            <View style={styles.welcomeSection}>
+              <Text style={styles.welcomeTitle}>Join FoodieExpress</Text>
+              <Text style={styles.welcomeSubtitle}>
+                Create your account to get started
               </Text>
             </View>
-          )}
-        </View>
 
-        {/* Account Details */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account Details</Text>
-          
-          <FormField
-            control={control}
-            name="email"
-            label="Email"
-            placeholder="Enter your email"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoComplete="email"
-          />
+            {/* General form error */}
+            {formError ? (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>{formError}</Text>
+              </View>
+            ) : null}
 
-          <FormField
-            control={control}
-            name="password"
-            label="Password"
-            placeholder="Enter your password"
-            secureTextEntry={!showPassword}
-            autoCapitalize="none"
-            autoComplete="new-password"
-            rightElement={
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                {showPassword ? (
-                  <EyeOff size={20} color="#6B7280" />
-                ) : (
-                  <Eye size={20} color="#6B7280" />
-                )}
+            {/* User Type Selection */}
+            <View style={styles.section}>
+              <FormSelect
+                control={control}
+                name="userType"
+                label="I want to"
+                options={userTypeOptions}
+              />
+              
+              {selectedUserType && (
+                <View style={styles.userTypePreview}>
+                  <View style={styles.userTypeIcon}>
+                    {React.createElement(getUserTypeIcon(selectedUserType), {
+                      size: 24,
+                      color: '#FF6B35'
+                    })}
+                  </View>
+                  <Text style={styles.userTypeDescription}>
+                    {getUserTypeDescription(selectedUserType)}
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {/* Account Details */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Account Details</Text>
+              
+              <FormField
+                control={control}
+                name="email"
+                label="Email"
+                placeholder="Enter your email"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+              />
+
+              <FormField
+                control={control}
+                name="password"
+                label="Password"
+                placeholder="Enter your password"
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoComplete="new-password"
+                rightElement={
+                  <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                    {showPassword ? (
+                      <EyeOff size={20} color="#6B7280" />
+                    ) : (
+                      <Eye size={20} color="#6B7280" />
+                    )}
+                  </TouchableOpacity>
+                }
+              />
+
+              <FormField
+                control={control}
+                name="confirmPassword"
+                label="Confirm Password"
+                placeholder="Confirm your password"
+                secureTextEntry={!showConfirmPassword}
+                autoCapitalize="none"
+                autoComplete="new-password"
+                rightElement={
+                  <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+                    {showConfirmPassword ? (
+                      <EyeOff size={20} color="#6B7280" />
+                    ) : (
+                      <Eye size={20} color="#6B7280" />
+                    )}
+                  </TouchableOpacity>
+                }
+              />
+            </View>
+
+            <Button
+              title={loading ? "Creating Account..." : "Create Account"}
+              onPress={handleSubmit(onSubmit)}
+              disabled={loading || !isValid}
+              style={styles.signUpButton}
+            />
+
+            <View style={styles.loginContainer}>
+              <Text style={styles.loginText}>Already have an account? </Text>
+              <TouchableOpacity onPress={() => router.push('/login')}>
+                <Text style={styles.loginLink}>Sign In</Text>
               </TouchableOpacity>
-            }
-          />
-
-          <FormField
-            control={control}
-            name="confirmPassword"
-            label="Confirm Password"
-            placeholder="Confirm your password"
-            secureTextEntry={!showConfirmPassword}
-            autoCapitalize="none"
-            autoComplete="new-password"
-            rightElement={
-              <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
-                {showConfirmPassword ? (
-                  <EyeOff size={20} color="#6B7280" />
-                ) : (
-                  <Eye size={20} color="#6B7280" />
-                )}
-              </TouchableOpacity>
-            }
-          />
-        </View>
-
-        <Button
-          title={loading ? "Creating Account..." : "Create Account"}
-          onPress={handleSubmit(onSubmit)}
-          disabled={loading || !isValid}
-          style={styles.signUpButton}
-        />
-
-        <View style={styles.loginContainer}>
-          <Text style={styles.loginText}>Already have an account? </Text>
-          <TouchableOpacity onPress={() => router.push('/login')}>
-            <Text style={styles.loginLink}>Sign In</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -223,10 +237,21 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F9FAFB',
   },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 40,
+  },
   content: {
     flex: 1,
     paddingHorizontal: 24,
     paddingTop: 16,
+    minHeight: '100%',
   },
   welcomeSection: {
     marginBottom: 32,
