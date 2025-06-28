@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Store, Clock, MapPin, Phone, Mail, Bell, CreditCard, Users, BarChart3, LogOut } from 'lucide-react-native';
+import { Store, Clock, MapPin, Phone, Mail, Bell, CreditCard, Users, ChartBar as BarChart3, LogOut } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { getRestaurantByUserId } from '@/utils/database';
