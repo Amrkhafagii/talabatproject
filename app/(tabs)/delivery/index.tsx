@@ -28,7 +28,10 @@ export default function DeliveryDashboard() {
     todayEarnings: 0,
     completedDeliveries: 0,
     avgDeliveryTime: 0,
-    rating: 0
+    rating: 0,
+    totalEarnings: 0,
+    totalDeliveries: 0,
+    onlineHours: 0
   });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -54,8 +57,7 @@ export default function DeliveryDashboard() {
         // Create a default driver profile for new delivery users
         driverData = await createDriverProfile(
           user.id,
-          user.user_metadata?.full_name || 'Driver',
-          '+1 (555) 123-4567',
+          'DL123456789',
           'car'
         );
       }
@@ -200,14 +202,14 @@ export default function DeliveryDashboard() {
   };
 
   const formatDeliveryForCard = (delivery: Delivery) => ({
-    id: parseInt(delivery.id.slice(-8), 16),
+    id: delivery.id,
     restaurantName: delivery.order?.restaurant?.name || 'Unknown Restaurant',
     customerName: `Customer ${delivery.order?.user_id.slice(-4) || '****'}`,
     customerPhone: '+1 (555) 123-4567', // This would come from user profile
     pickupAddress: delivery.pickup_address,
     deliveryAddress: delivery.delivery_address,
-    distance: delivery.distance,
-    estimatedTime: delivery.estimated_time,
+    distance: delivery.distance_km ? `${delivery.distance_km} km` : '2.1 miles',
+    estimatedTime: delivery.estimated_duration_minutes ? `${delivery.estimated_duration_minutes} min` : '15 min',
     payment: delivery.delivery_fee,
     items: delivery.order?.order_items?.map(item => 
       `${item.menu_item?.name || 'Unknown Item'} x${item.quantity}`
@@ -246,7 +248,7 @@ export default function DeliveryDashboard() {
         <View style={styles.headerLeft}>
           <Truck size={24} color="#FF6B35" />
           <View style={styles.headerText}>
-            <Text style={styles.driverName}>{driver.name}</Text>
+            <Text style={styles.driverName}>{driver.user?.full_name || 'Driver'}</Text>
             <View style={styles.statusContainer}>
               <View style={[styles.statusDot, { backgroundColor: driver.is_online ? '#10B981' : '#EF4444' }]} />
               <Text style={[styles.statusText, { color: driver.is_online ? '#10B981' : '#EF4444' }]}>

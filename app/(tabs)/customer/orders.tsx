@@ -9,6 +9,8 @@ import Button from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
 import { getUserOrders } from '@/utils/database';
 import { Order } from '@/types/database';
+import { formatOrderTime } from '@/utils/formatters';
+import { getOrderItems } from '@/utils/orderHelpers';
 
 export default function Orders() {
   const [selectedTab, setSelectedTab] = useState('active');
@@ -49,28 +51,6 @@ export default function Orders() {
 
   const reorder = (orderId: string) => {
     console.log('Reorder:', orderId);
-  };
-
-  const formatOrderTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-    
-    if (diffInHours < 1) {
-      const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
-      return `${diffInMinutes} min ago`;
-    } else if (diffInHours < 24) {
-      return `${diffInHours} hours ago`;
-    } else {
-      return date.toLocaleDateString();
-    }
-  };
-
-  const getOrderItems = (order: Order) => {
-    if (!order.order_items) return [];
-    return order.order_items.map(item => 
-      `${item.menu_item?.name} x${item.quantity}`
-    );
   };
 
   if (loading) {
@@ -129,11 +109,11 @@ export default function Orders() {
           <OrderCard
             key={order.id}
             order={{
-              id: parseInt(order.id.slice(-8), 16), // Convert UUID to number for compatibility
+              id: order.id,
               restaurantName: order.restaurant?.name || 'Unknown Restaurant',
               items: getOrderItems(order),
               total: order.total,
-              status: order.status,
+              status: order.status as any,
               orderTime: formatOrderTime(order.created_at),
               deliveryTime: order.status !== 'delivered' ? '25-30 min' : undefined,
               address: order.delivery_address

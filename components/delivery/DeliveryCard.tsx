@@ -5,7 +5,7 @@ import Card from '../ui/Card';
 import Button from '../ui/Button';
 
 interface DeliveryOrder {
-  id: number;
+  id: string;
   restaurantName: string;
   customerName: string;
   customerPhone?: string;

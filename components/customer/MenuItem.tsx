@@ -4,7 +4,7 @@ import { Plus, Minus } from 'lucide-react-native';
 import Badge from '../ui/Badge';
 
 interface MenuItem {
-  id: number;
+  id: string;
   name: string;
   description: string;
   price: number;

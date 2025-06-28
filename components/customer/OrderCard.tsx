@@ -6,7 +6,7 @@ import Badge from '../ui/Badge';
 import Button from '../ui/Button';
 
 interface Order {
-  id: number;
+  id: string;
   restaurantName: string;
   items: string[];
   total: number;

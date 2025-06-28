@@ -5,6 +5,7 @@ import { Star, Clock, ShoppingCart } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import Header from '@/components/ui/Header';
+import SearchBar from '@/components/ui/SearchBar';
 import MenuItem from '@/components/customer/MenuItem';
 import { useCart } from '@/hooks/useCart';
 import { getRestaurantById, getMenuItemsByRestaurant } from '@/utils/database';
@@ -15,6 +16,7 @@ const menuCategories = ['Popular', 'Mains', 'Sides', 'Beverages', 'Desserts'];
 export default function RestaurantDetail() {
   const params = useLocalSearchParams();
   const [selectedCategory, setSelectedCategory] = useState('Popular');
+  const [menuSearchQuery, setMenuSearchQuery] = useState('');
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [menuItems, setMenuItems] = useState<MenuItemType[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,7 +29,7 @@ export default function RestaurantDetail() {
     if (restaurantId) {
       loadRestaurantData();
     }
-  }, [restaurantId]);
+  }, [restaurantId, selectedCategory, menuSearchQuery]);
 
   const loadRestaurantData = async () => {
     try {
@@ -36,7 +38,10 @@ export default function RestaurantDetail() {
 
       const [restaurantData, menuData] = await Promise.all([
         getRestaurantById(restaurantId),
-        getMenuItemsByRestaurant(restaurantId)
+        getMenuItemsByRestaurant(restaurantId, {
+          category: selectedCategory,
+          search: menuSearchQuery || undefined
+        })
       ]);
 
       if (!restaurantData) {
@@ -53,8 +58,6 @@ export default function RestaurantDetail() {
       setLoading(false);
     }
   };
-
-  const filteredItems = menuItems.filter(item => item.category === selectedCategory);
 
   const getCartTotalForItems = () => {
     return Object.entries(cart).reduce((total, [itemId, quantity]) => {
@@ -119,6 +122,16 @@ export default function RestaurantDetail() {
           </View>
         </View>
 
+        {/* Menu Search */}
+        <View style={styles.searchSection}>
+          <SearchBar
+            value={menuSearchQuery}
+            onChangeText={setMenuSearchQuery}
+            placeholder="Search menu items..."
+            style={styles.menuSearchBar}
+          />
+        </View>
+
         {/* Category Tabs */}
         <View style={styles.categoryTabs}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -144,16 +157,16 @@ export default function RestaurantDetail() {
 
         {/* Menu Items */}
         <View style={styles.menuItems}>
-          {filteredItems.map((item) => (
+          {menuItems.map((item) => (
             <MenuItem
               key={item.id}
               item={{
-                id: parseInt(item.id.slice(-8), 16), // Convert UUID to number for compatibility
+                id: item.id,
                 name: item.name,
                 description: item.description,
                 price: item.price,
                 image: item.image,
-                popular: item.popular
+                popular: item.is_popular
               }}
               quantity={cart[item.id] || 0}
               onAdd={() => addToCart(item.id)}
@@ -161,9 +174,11 @@ export default function RestaurantDetail() {
             />
           ))}
           
-          {filteredItems.length === 0 && (
+          {menuItems.length === 0 && (
             <View style={styles.emptyCategory}>
-              <Text style={styles.emptyCategoryText}>No items in this category</Text>
+              <Text style={styles.emptyCategoryText}>
+                {menuSearchQuery ? 'No items match your search' : 'No items in this category'}
+              </Text>
             </View>
           )}
         </View>
@@ -277,6 +292,15 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginLeft: 4,
     fontFamily: 'Inter-Regular',
+  },
+  searchSection: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    marginBottom: 8,
+  },
+  menuSearchBar: {
+    margin: 0,
   },
   categoryTabs: {
     backgroundColor: '#FFFFFF',

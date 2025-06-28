@@ -8,6 +8,13 @@ export default function CustomerLayout() {
       <Stack.Screen name="cart" />
       <Stack.Screen name="orders" />
       <Stack.Screen name="profile" />
+      <Stack.Screen 
+        name="filters" 
+        options={{ 
+          presentation: 'modal',
+          headerShown: false 
+        }} 
+      />
     </Stack>
   );
 }

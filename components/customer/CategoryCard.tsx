@@ -2,7 +2,7 @@ import React from 'react';
 import { TouchableOpacity, Text, StyleSheet } from 'react-native';
 
 interface Category {
-  id: number;
+  id: string;
   name: string;
   emoji: string;
 }

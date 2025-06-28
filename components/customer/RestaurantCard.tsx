@@ -4,7 +4,7 @@ import { Star, Clock, Heart } from 'lucide-react-native';
 import Card from '../ui/Card';
 
 interface Restaurant {
-  id: number;
+  id: string;
   name: string;
   cuisine: string;
   rating: number;

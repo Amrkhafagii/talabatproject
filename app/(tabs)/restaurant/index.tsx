@@ -14,6 +14,8 @@ import {
   updateOrderStatus 
 } from '@/utils/database';
 import { Restaurant, Order, RestaurantStats } from '@/types/database';
+import { formatOrderTime } from '@/utils/formatters';
+import { getOrderItems } from '@/utils/orderHelpers';
 
 export default function RestaurantDashboard() {
   const { user } = useAuth();
@@ -23,7 +25,11 @@ export default function RestaurantDashboard() {
     todayRevenue: 0,
     todayOrders: 0,
     avgOrderValue: 0,
-    rating: 0
+    rating: 0,
+    totalOrders: 0,
+    totalRevenue: 0,
+    popularItems: [],
+    recentOrders: []
   });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -121,26 +127,6 @@ export default function RestaurantDashboard() {
       console.error('Error updating order status:', err);
       Alert.alert('Error', 'Failed to update order status');
     }
-  };
-
-  const formatOrderTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
-    
-    if (diffInMinutes < 60) {
-      return `${diffInMinutes} min ago`;
-    } else {
-      const diffInHours = Math.floor(diffInMinutes / 60);
-      return `${diffInHours} hours ago`;
-    }
-  };
-
-  const getOrderItems = (order: Order) => {
-    if (!order.order_items) return [];
-    return order.order_items.map(item => 
-      `${item.menu_item?.name || 'Unknown Item'} x${item.quantity}`
-    );
   };
 
   const recentOrders = orders.slice(0, 5); // Show only recent 5 orders
@@ -250,8 +236,8 @@ export default function RestaurantDashboard() {
               <OrderManagementCard
                 key={order.id}
                 order={{
-                  id: parseInt(order.id.slice(-8), 16), // Convert UUID to number for compatibility
-                  orderNumber: `#${order.id.slice(-6).toUpperCase()}`,
+                  id: order.id,
+                  orderNumber: `#${order.order_number || order.id.slice(-6).toUpperCase()}`,
                   customer: `Customer ${order.user_id.slice(-4)}`,
                   items: getOrderItems(order),
                   total: order.total,

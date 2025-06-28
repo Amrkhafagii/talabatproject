@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MapPin } from 'lucide-react-native';
-import { router } from 'expo-router';
+import { MapPin, Filter } from 'lucide-react-native';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 
 import SearchBar from '@/components/ui/SearchBar';
 import CategoryCard from '@/components/customer/CategoryCard';
 import RestaurantCard from '@/components/customer/RestaurantCard';
 import { useFavorites } from '@/hooks/useFavorites';
 import { getCategories, getRestaurants } from '@/utils/database';
-import { Category, Restaurant } from '@/types/database';
+import { Category, Restaurant, RestaurantFilters } from '@/types/database';
 
 export default function CustomerHome() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -19,18 +19,57 @@ export default function CustomerHome() {
   const [error, setError] = useState<string | null>(null);
   const { toggleFavorite, isFavorite } = useFavorites();
 
+  // Filter states
+  const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
+  const [minRating, setMinRating] = useState<number>(0);
+  const [maxDeliveryFee, setMaxDeliveryFee] = useState<number>(50);
+  const [showPromotedOnly, setShowPromotedOnly] = useState<boolean>(false);
+
+  const params = useLocalSearchParams();
+
+  // Listen for filter changes from the filter screen
+  useFocusEffect(
+    React.useCallback(() => {
+      if (params.selectedCuisines) {
+        try {
+          setSelectedCuisines(JSON.parse(params.selectedCuisines as string));
+        } catch (e) {
+          console.error('Error parsing selectedCuisines:', e);
+        }
+      }
+      if (params.minRating) {
+        setMinRating(parseFloat(params.minRating as string));
+      }
+      if (params.maxDeliveryFee) {
+        setMaxDeliveryFee(parseFloat(params.maxDeliveryFee as string));
+      }
+      if (params.showPromotedOnly) {
+        setShowPromotedOnly(params.showPromotedOnly === 'true');
+      }
+    }, [params])
+  );
+
   useEffect(() => {
     loadData();
-  }, []);
+  }, [selectedCuisines, minRating, maxDeliveryFee, showPromotedOnly, searchQuery]);
 
   const loadData = async () => {
     try {
       setLoading(true);
       setError(null);
       
+      // Construct filters
+      const filters: RestaurantFilters = {
+        search: searchQuery || undefined,
+        cuisine: selectedCuisines.length > 0 ? selectedCuisines : undefined,
+        rating: minRating > 0 ? minRating : undefined,
+        deliveryFee: maxDeliveryFee < 50 ? maxDeliveryFee : undefined,
+        promoted: showPromotedOnly ? true : undefined,
+      };
+
       const [categoriesData, restaurantsData] = await Promise.all([
         getCategories(),
-        getRestaurants()
+        getRestaurants(filters)
       ]);
       
       setCategories(categoriesData);
@@ -53,12 +92,11 @@ export default function CustomerHome() {
     });
   };
 
-  const filteredRestaurants = restaurants.filter(restaurant =>
-    restaurant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    restaurant.cuisine.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const openFilters = () => {
+    router.push('/customer/filters');
+  };
 
-  const promotedRestaurants = filteredRestaurants.filter(r => r.promoted);
+  const promotedRestaurants = restaurants.filter(r => r.is_promoted);
 
   if (loading) {
     return (
@@ -96,12 +134,17 @@ export default function CustomerHome() {
               <Text style={styles.address}>Downtown, City Center</Text>
             </View>
           </View>
-          <TouchableOpacity 
-            style={styles.profileButton}
-            onPress={() => router.push('/customer/profile')}
-          >
-            <Text style={styles.profileInitial}>JD</Text>
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity style={styles.filterButton} onPress={openFilters}>
+              <Filter size={20} color="#6B7280" />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.profileButton}
+              onPress={() => router.push('/customer/profile')}
+            >
+              <Text style={styles.profileInitial}>JD</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Search Bar */}
@@ -112,6 +155,25 @@ export default function CustomerHome() {
           style={styles.searchContainer}
         />
 
+        {/* Active Filters Indicator */}
+        {(selectedCuisines.length > 0 || minRating > 0 || maxDeliveryFee < 50 || showPromotedOnly) && (
+          <View style={styles.activeFiltersContainer}>
+            <Text style={styles.activeFiltersText}>
+              Filters active ({
+                [
+                  selectedCuisines.length > 0 && 'Cuisine',
+                  minRating > 0 && 'Rating',
+                  maxDeliveryFee < 50 && 'Delivery Fee',
+                  showPromotedOnly && 'Promoted'
+                ].filter(Boolean).join(', ')
+              })
+            </Text>
+            <TouchableOpacity onPress={openFilters}>
+              <Text style={styles.editFiltersText}>Edit</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Categories */}
         {categories.length > 0 && (
           <View style={styles.section}>
@@ -121,7 +183,7 @@ export default function CustomerHome() {
                 <CategoryCard
                   key={category.id}
                   category={{
-                    id: parseInt(category.id.slice(-8), 16), // Convert UUID to number for compatibility
+                    id: category.id,
                     name: category.name,
                     emoji: category.emoji
                   }}
@@ -141,19 +203,19 @@ export default function CustomerHome() {
                 <RestaurantCard
                   key={restaurant.id}
                   restaurant={{
-                    id: parseInt(restaurant.id.slice(-8), 16), // Convert UUID to number for compatibility
+                    id: restaurant.id,
                     name: restaurant.name,
                     cuisine: restaurant.cuisine,
                     rating: restaurant.rating,
                     deliveryTime: restaurant.delivery_time,
                     deliveryFee: restaurant.delivery_fee,
                     image: restaurant.image,
-                    promoted: restaurant.promoted
+                    promoted: restaurant.is_promoted
                   }}
                   variant="promoted"
                   onPress={() => navigateToRestaurant(restaurant)}
-                  onFavoritePress={() => toggleFavorite(parseInt(restaurant.id.slice(-8), 16))}
-                  isFavorite={isFavorite(parseInt(restaurant.id.slice(-8), 16))}
+                  onFavoritePress={() => toggleFavorite(restaurant.id)}
+                  isFavorite={isFavorite(restaurant.id)}
                 />
               ))}
             </ScrollView>
@@ -169,27 +231,27 @@ export default function CustomerHome() {
             </TouchableOpacity>
           </View>
           <View style={styles.restaurantsContainer}>
-            {filteredRestaurants.map((restaurant) => (
+            {restaurants.map((restaurant) => (
               <RestaurantCard
                 key={restaurant.id}
                 restaurant={{
-                  id: parseInt(restaurant.id.slice(-8), 16), // Convert UUID to number for compatibility
+                  id: restaurant.id,
                   name: restaurant.name,
                   cuisine: restaurant.cuisine,
                   rating: restaurant.rating,
                   deliveryTime: restaurant.delivery_time,
                   deliveryFee: restaurant.delivery_fee,
                   image: restaurant.image,
-                  promoted: restaurant.promoted
+                  promoted: restaurant.is_promoted
                 }}
                 onPress={() => navigateToRestaurant(restaurant)}
-                onFavoritePress={() => toggleFavorite(parseInt(restaurant.id.slice(-8), 16))}
-                isFavorite={isFavorite(parseInt(restaurant.id.slice(-8), 16))}
+                onFavoritePress={() => toggleFavorite(restaurant.id)}
+                isFavorite={isFavorite(restaurant.id)}
               />
             ))}
           </View>
           
-          {filteredRestaurants.length === 0 && (
+          {restaurants.length === 0 && (
             <View style={styles.emptyState}>
               <Text style={styles.emptyText}>No restaurants found</Text>
             </View>
@@ -252,6 +314,7 @@ const styles = StyleSheet.create({
   locationContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   locationText: {
     marginLeft: 8,
@@ -265,6 +328,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#111827',
     fontFamily: 'Inter-SemiBold',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  filterButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   profileButton: {
     width: 40,
@@ -282,6 +358,29 @@ const styles = StyleSheet.create({
   searchContainer: {
     marginHorizontal: 20,
     marginVertical: 16,
+  },
+  activeFiltersContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginBottom: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#FFF7F5',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FF6B35',
+  },
+  activeFiltersText: {
+    fontSize: 14,
+    color: '#FF6B35',
+    fontFamily: 'Inter-Medium',
+  },
+  editFiltersText: {
+    fontSize: 14,
+    color: '#FF6B35',
+    fontFamily: 'Inter-SemiBold',
   },
   section: {
     marginBottom: 24,

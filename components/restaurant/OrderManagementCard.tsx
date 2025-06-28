@@ -5,7 +5,7 @@ import Badge from '../ui/Badge';
 import Button from '../ui/Button';
 
 interface RestaurantOrder {
-  id: number;
+  id: string;
   orderNumber: string;
   customer: string;
   items: string[];
