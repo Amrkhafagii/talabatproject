@@ -43,12 +43,12 @@ export default function Welcome() {
         <View style={styles.actionSection}>
           <Button
             title="Get Started"
-            onPress={() => router.push('/signup')}
+            onPress={() => router.push('/(auth)/signup')}
             style={styles.primaryButton}
           />
           <Button
             title="Already have an account? Sign In"
-            onPress={() => router.push('/login')}
+            onPress={() => router.push('/(auth)/login')}
             variant="outline"
             style={styles.secondaryButton}
           />
