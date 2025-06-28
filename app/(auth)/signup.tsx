@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { User, Store, Truck, Eye, EyeOff } from 'lucide-react-native';
@@ -10,14 +10,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/ui/Header';
 import Button from '@/components/ui/Button';
 import FormField from '@/components/ui/FormField';
-import FormSelect from '@/components/ui/FormSelect';
+import UserTypeSelector from '@/components/ui/UserTypeSelector';
 import { signupSchema, SignupFormData } from '@/utils/validation/schemas';
-
-const userTypeOptions = [
-  { label: 'Customer - Order food from restaurants', value: 'customer' },
-  { label: 'Restaurant - Manage your restaurant and orders', value: 'restaurant' },
-  { label: 'Delivery Driver - Deliver food and earn money', value: 'delivery' },
-];
 
 export default function SignUp() {
   const [showPassword, setShowPassword] = useState(false);
@@ -32,6 +26,7 @@ export default function SignUp() {
     handleSubmit,
     formState: { errors, isValid },
     watch,
+    setValue,
   } = useForm<SignupFormData>({
     resolver: zodResolver(signupSchema),
     mode: 'onChange',
@@ -78,30 +73,8 @@ export default function SignUp() {
     }
   };
 
-  const getUserTypeIcon = (userType: string) => {
-    switch (userType) {
-      case 'customer':
-        return User;
-      case 'restaurant':
-        return Store;
-      case 'delivery':
-        return Truck;
-      default:
-        return User;
-    }
-  };
-
-  const getUserTypeDescription = (userType: string) => {
-    switch (userType) {
-      case 'customer':
-        return 'Order delicious food from your favorite restaurants';
-      case 'restaurant':
-        return 'Manage your restaurant, menu, and incoming orders';
-      case 'delivery':
-        return 'Deliver food to customers and earn money on your schedule';
-      default:
-        return '';
-    }
+  const handleUserTypeSelect = (userType: 'customer' | 'restaurant' | 'delivery') => {
+    setValue('userType', userType);
   };
 
   return (
@@ -137,26 +110,11 @@ export default function SignUp() {
 
             {/* User Type Selection */}
             <View style={styles.section}>
-              <FormSelect
-                control={control}
-                name="userType"
-                label="I want to"
-                options={userTypeOptions}
+              <Text style={styles.sectionTitle}>I want to</Text>
+              <UserTypeSelector
+                selectedType={selectedUserType}
+                onSelect={handleUserTypeSelect}
               />
-              
-              {selectedUserType && (
-                <View style={styles.userTypePreview}>
-                  <View style={styles.userTypeIcon}>
-                    {React.createElement(getUserTypeIcon(selectedUserType), {
-                      size: 24,
-                      color: '#FF6B35'
-                    })}
-                  </View>
-                  <Text style={styles.userTypeDescription}>
-                    {getUserTypeDescription(selectedUserType)}
-                  </Text>
-                </View>
-              )}
             </View>
 
             {/* Account Details */}
@@ -291,30 +249,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     color: '#111827',
     marginBottom: 16,
-  },
-  userTypePreview: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF7F5',
-    padding: 16,
-    borderRadius: 12,
-    marginTop: 8,
-  },
-  userTypeIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  userTypeDescription: {
-    flex: 1,
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#374151',
-    lineHeight: 20,
   },
   signUpButton: {
     marginBottom: 24,
