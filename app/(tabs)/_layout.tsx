@@ -12,53 +12,23 @@ export default function TabLayout() {
     }
   }, [user, loading]);
 
-  if (loading || !user || !userType) {
+  useEffect(() => {
+    // If userType is invalid or null, redirect to welcome
+    if (!loading && user && !userType) {
+      router.replace('/(auth)/welcome');
+    }
+  }, [user, userType, loading]);
+
+  if (loading || !user) {
     return null;
   }
 
-  // Show only the relevant tab based on user type
-  const getTabScreens = () => {
-    switch (userType) {
-      case 'customer':
-        return (
-          <Tabs.Screen
-            name="customer"
-            options={{
-              title: 'Customer',
-              tabBarIcon: ({ size, color }) => (
-                <User size={size} color={color} />
-              ),
-            }}
-          />
-        );
-      case 'restaurant':
-        return (
-          <Tabs.Screen
-            name="restaurant"
-            options={{
-              title: 'Restaurant',
-              tabBarIcon: ({ size, color }) => (
-                <Store size={size} color={color} />
-              ),
-            }}
-          />
-        );
-      case 'delivery':
-        return (
-          <Tabs.Screen
-            name="delivery"
-            options={{
-              title: 'Delivery',
-              tabBarIcon: ({ size, color }) => (
-                <Truck size={size} color={color} />
-              ),
-            }}
-          />
-        );
-      default:
-        return null;
-    }
-  };
+  // Ensure we have a valid userType before rendering tabs
+  if (!userType || !['customer', 'restaurant', 'delivery'].includes(userType)) {
+    // Redirect to welcome if userType is invalid
+    router.replace('/(auth)/welcome');
+    return null;
+  }
 
   return (
     <Tabs
@@ -80,7 +50,39 @@ export default function TabLayout() {
           marginTop: 4,
         },
       }}>
-      {getTabScreens()}
+      {userType === 'customer' && (
+        <Tabs.Screen
+          name="customer"
+          options={{
+            title: 'Customer',
+            tabBarIcon: ({ size, color }) => (
+              <User size={size} color={color} />
+            ),
+          }}
+        />
+      )}
+      {userType === 'restaurant' && (
+        <Tabs.Screen
+          name="restaurant"
+          options={{
+            title: 'Restaurant',
+            tabBarIcon: ({ size, color }) => (
+              <Store size={size} color={color} />
+            ),
+          }}
+        />
+      )}
+      {userType === 'delivery' && (
+        <Tabs.Screen
+          name="delivery"
+          options={{
+            title: 'Delivery',
+            tabBarIcon: ({ size, color }) => (
+              <Truck size={size} color={color} />
+            ),
+          }}
+        />
+      )}
     </Tabs>
   );
 }

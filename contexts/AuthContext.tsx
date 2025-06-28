@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/utils/supabase';
 
@@ -19,15 +19,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [userType, setUserType] = useState<'customer' | 'restaurant' | 'delivery' | null>(null);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
+    mountedRef.current = true;
+
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mountedRef.current) return;
+      
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        // Get user type from metadata
-        setUserType(session.user.user_metadata?.user_type || 'customer');
+        // Get user type from metadata, default to 'customer' if not set
+        const userTypeFromMetadata = session.user.user_metadata?.user_type;
+        const validUserTypes = ['customer', 'restaurant', 'delivery'];
+        const finalUserType = validUserTypes.includes(userTypeFromMetadata) 
+          ? userTypeFromMetadata 
+          : 'customer';
+        setUserType(finalUserType);
       }
       setLoading(false);
     });
@@ -35,10 +45,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        if (!mountedRef.current) return;
+        
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          setUserType(session.user.user_metadata?.user_type || 'customer');
+          // Get user type from metadata, default to 'customer' if not set
+          const userTypeFromMetadata = session.user.user_metadata?.user_type;
+          const validUserTypes = ['customer', 'restaurant', 'delivery'];
+          const finalUserType = validUserTypes.includes(userTypeFromMetadata) 
+            ? userTypeFromMetadata 
+            : 'customer';
+          setUserType(finalUserType);
         } else {
           setUserType(null);
         }
@@ -46,7 +64,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mountedRef.current = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signUp = async (email: string, password: string, userType: 'customer' | 'restaurant' | 'delivery') => {
