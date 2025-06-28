@@ -10,9 +10,23 @@ export default function Index() {
     if (!loading) {
       if (user && userType) {
         // User is authenticated, redirect to appropriate tab based on user type
-        router.replace('/(tabs)');
+        switch (userType) {
+          case 'customer':
+            router.replace('/(tabs)/customer');
+            break;
+          case 'restaurant':
+            router.replace('/(tabs)/restaurant');
+            break;
+          case 'delivery':
+            router.replace('/(tabs)/delivery');
+            break;
+          default:
+            // Fallback to customer dashboard if userType is not recognized
+            router.replace('/(tabs)/customer');
+            break;
+        }
       } else {
-        // User is not authenticated, redirect directly to login screen
+        // User is not authenticated, redirect to login screen
         router.replace('/(auth)/login');
       }
     }
