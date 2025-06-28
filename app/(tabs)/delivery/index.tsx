@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Truck, DollarSign, Clock, CircleCheck as CheckCircle, RefreshCw, Phone, Navigation } from 'lucide-react-native';
+import { Truck, DollarSign, Clock, CircleCheck as CheckCircle, RefreshCw, Phone, Navigation, MapPin, History, BarChart3 } from 'lucide-react-native';
+import { router } from 'expo-router';
 
 import StatCard from '@/components/common/StatCard';
 import DeliveryCard from '@/components/delivery/DeliveryCard';
@@ -168,7 +169,7 @@ export default function DeliveryDashboard() {
 
   const navigate = (address: string) => {
     console.log('Navigate to:', address);
-    Alert.alert('Navigate', `Would navigate to: ${address}`);
+    router.push('/delivery/navigation');
   };
 
   const formatDeliveryForCard = (delivery: any) => ({
@@ -288,6 +289,44 @@ export default function DeliveryDashboard() {
               label="Rating"
               iconColor="#FFB800"
             />
+          </View>
+        </View>
+
+        {/* Quick Actions */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <View style={styles.quickActions}>
+            <TouchableOpacity 
+              style={styles.actionCard}
+              onPress={() => router.push('/delivery/navigation')}
+            >
+              <Navigation size={24} color="#FF6B35" />
+              <Text style={styles.actionText}>Navigation</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.actionCard}
+              onPress={() => router.push('/delivery/location')}
+            >
+              <MapPin size={24} color="#FF6B35" />
+              <Text style={styles.actionText}>Location</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.actionCard}
+              onPress={() => router.push('/delivery/history')}
+            >
+              <History size={24} color="#FF6B35" />
+              <Text style={styles.actionText}>History</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.actionCard}
+              onPress={() => router.push('/delivery/earnings')}
+            >
+              <BarChart3 size={24} color="#FF6B35" />
+              <Text style={styles.actionText}>Earnings</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -484,6 +523,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     paddingHorizontal: 12,
+  },
+  quickActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 12,
+    gap: 8,
+  },
+  actionCard: {
+    width: '47%',
+    backgroundColor: '#FFFFFF',
+    padding: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  actionText: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#111827',
+    marginTop: 8,
   },
   deliveryContainer: {
     paddingHorizontal: 20,

@@ -55,6 +55,63 @@ export async function getDriverDeliveries(driverId: string): Promise<Delivery[]>
   return data || [];
 }
 
+export async function getDriverDeliveryHistory(
+  driverId: string, 
+  period: 'today' | 'week' | 'month' | 'all' = 'week'
+): Promise<Delivery[]> {
+  let query = supabase
+    .from('deliveries')
+    .select(`
+      *,
+      order:orders(
+        *,
+        restaurant:restaurants(*),
+        user:users(*),
+        order_items(
+          *,
+          menu_item:menu_items(*)
+        )
+      )
+    `)
+    .eq('driver_id', driverId)
+    .eq('status', 'delivered');
+
+  // Apply date filters based on period
+  const now = new Date();
+  let startDate: Date;
+
+  switch (period) {
+    case 'today':
+      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      break;
+    case 'week':
+      startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      break;
+    case 'month':
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      break;
+    case 'all':
+    default:
+      // No date filter for 'all'
+      break;
+  }
+
+  if (period !== 'all' && startDate) {
+    query = query.gte('delivered_at', startDate.toISOString());
+  }
+
+  query = query.order('delivered_at', { ascending: false });
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('Error fetching driver delivery history:', error);
+    return [];
+  }
+
+  return data || [];
+}
+
 export async function acceptDelivery(deliveryId: string, driverId: string): Promise<boolean> {
   const { error } = await supabase
     .from('deliveries')

@@ -133,3 +133,90 @@ export async function getDriverStats(driverId: string): Promise<DeliveryStats> {
     onlineHours: 8 // This would need tracking of online/offline times
   };
 }
+
+export async function getDriverEarningsStats(driverId: string): Promise<{
+  todayEarnings: number;
+  weekEarnings: number;
+  monthEarnings: number;
+  totalEarnings: number;
+  avgEarningsPerDelivery: number;
+  totalDeliveries: number;
+  totalHours: number;
+  avgRating: number;
+}> {
+  const now = new Date();
+  
+  // Calculate date ranges
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  // Get all completed deliveries
+  const { data: allDeliveries, error: deliveriesError } = await supabase
+    .from('deliveries')
+    .select('driver_earnings, delivered_at, picked_up_at, assigned_at')
+    .eq('driver_id', driverId)
+    .eq('status', 'delivered')
+    .order('delivered_at', { ascending: false });
+
+  // Get driver info
+  const { data: driver, error: driverError } = await supabase
+    .from('delivery_drivers')
+    .select('rating, total_deliveries, total_earnings')
+    .eq('id', driverId)
+    .single();
+
+  if (deliveriesError || driverError) {
+    console.error('Error fetching driver earnings stats:', deliveriesError || driverError);
+    return {
+      todayEarnings: 0,
+      weekEarnings: 0,
+      monthEarnings: 0,
+      totalEarnings: 0,
+      avgEarningsPerDelivery: 0,
+      totalDeliveries: 0,
+      totalHours: 0,
+      avgRating: 0
+    };
+  }
+
+  const deliveries = allDeliveries || [];
+
+  // Calculate earnings by period
+  const todayEarnings = deliveries
+    .filter(d => new Date(d.delivered_at) >= today)
+    .reduce((sum, d) => sum + d.driver_earnings, 0);
+
+  const weekEarnings = deliveries
+    .filter(d => new Date(d.delivered_at) >= weekStart)
+    .reduce((sum, d) => sum + d.driver_earnings, 0);
+
+  const monthEarnings = deliveries
+    .filter(d => new Date(d.delivered_at) >= monthStart)
+    .reduce((sum, d) => sum + d.driver_earnings, 0);
+
+  const totalEarnings = deliveries.reduce((sum, d) => sum + d.driver_earnings, 0);
+  const totalDeliveries = deliveries.length;
+  const avgEarningsPerDelivery = totalDeliveries > 0 ? totalEarnings / totalDeliveries : 0;
+
+  // Calculate total hours (rough estimate based on delivery times)
+  const totalHours = deliveries.reduce((sum, delivery) => {
+    if (delivery.assigned_at && delivery.delivered_at) {
+      const assignedTime = new Date(delivery.assigned_at).getTime();
+      const deliveredTime = new Date(delivery.delivered_at).getTime();
+      return sum + (deliveredTime - assignedTime) / (1000 * 60 * 60); // Convert to hours
+    }
+    return sum;
+  }, 0);
+
+  return {
+    todayEarnings,
+    weekEarnings,
+    monthEarnings,
+    totalEarnings,
+    avgEarningsPerDelivery,
+    totalDeliveries,
+    totalHours: Math.round(totalHours),
+    avgRating: driver?.rating || 0
+  };
+}
