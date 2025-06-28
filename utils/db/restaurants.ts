@@ -72,7 +72,7 @@ export async function getRestaurantByUserId(userId: string): Promise<Restaurant 
   return data;
 }
 
-async function createRestaurant(restaurant: Omit<Restaurant, 'id' | 'created_at' | 'rating'>): Promise<Restaurant | null> {
+export async function createRestaurant(restaurant: Omit<Restaurant, 'id' | 'created_at' | 'rating'>): Promise<Restaurant | null> {
   const { data, error } = await supabase
     .from('restaurants')
     .insert(restaurant)
@@ -87,7 +87,7 @@ async function createRestaurant(restaurant: Omit<Restaurant, 'id' | 'created_at'
   return data;
 }
 
-async function updateRestaurant(restaurantId: string, updates: Partial<Restaurant>): Promise<boolean> {
+export async function updateRestaurant(restaurantId: string, updates: Partial<Restaurant>): Promise<boolean> {
   const { error } = await supabase
     .from('restaurants')
     .update(updates)

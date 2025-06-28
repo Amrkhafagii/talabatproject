@@ -61,19 +61,17 @@ export async function getMenuItemById(id: string): Promise<MenuItem | null> {
   return data;
 }
 
-export async function createMenuItem(menuItem: Omit<MenuItem, 'id' | 'created_at' | 'updated_at'>): Promise<MenuItem | null> {
-  const { data, error } = await supabase
+export async function createMenuItem(menuItem: Omit<MenuItem, 'id' | 'created_at' | 'updated_at'>): Promise<boolean> {
+  const { error } = await supabase
     .from('menu_items')
-    .insert(menuItem)
-    .select()
-    .single();
+    .insert(menuItem);
 
   if (error) {
     console.error('Error creating menu item:', error);
-    return null;
+    return false;
   }
 
-  return data;
+  return true;
 }
 
 export async function updateMenuItem(menuItemId: string, updates: Partial<MenuItem>): Promise<boolean> {

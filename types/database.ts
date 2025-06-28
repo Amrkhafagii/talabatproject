@@ -21,7 +21,7 @@ export interface Category {
 
 export interface Restaurant {
   id: string;
-  owner_id?: string;
+  owner_id: string;
   name: string;
   description?: string;
   cuisine: string;

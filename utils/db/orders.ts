@@ -64,7 +64,7 @@ export async function createOrder(
   return order;
 }
 
-async function getUserOrders(userId: string, filters?: OrderFilters): Promise<Order[]> {
+export async function getUserOrders(userId: string, filters?: OrderFilters): Promise<Order[]> {
   let query = supabase
     .from('orders')
     .select(`
@@ -115,7 +115,7 @@ async function getUserOrders(userId: string, filters?: OrderFilters): Promise<Or
   return data || [];
 }
 
-async function getRestaurantOrders(restaurantId: string, filters?: OrderFilters): Promise<Order[]> {
+export async function getRestaurantOrders(restaurantId: string, filters?: OrderFilters): Promise<Order[]> {
   let query = supabase
     .from('orders')
     .select(`
@@ -153,7 +153,7 @@ async function getRestaurantOrders(restaurantId: string, filters?: OrderFilters)
   return data || [];
 }
 
-async function getOrderById(orderId: string): Promise<Order | null> {
+export async function getOrderById(orderId: string): Promise<Order | null> {
   const { data, error } = await supabase
     .from('orders')
     .select(`
