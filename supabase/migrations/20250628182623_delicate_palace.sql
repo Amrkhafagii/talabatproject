@@ -1,30 +1,29 @@
 /*
-  # Complete Food Delivery App Database Schema
+  # Complete Food Delivery Database Schema
 
   1. New Tables
-    - `users` - Extended user profiles with metadata
-    - `categories` - Food categories (Pizza, Burger, etc.)
-    - `restaurants` - Restaurant information and details
-    - `menu_items` - Restaurant menu items with categories
-    - `orders` - Customer orders with status tracking
-    - `order_items` - Individual items within orders
-    - `delivery_drivers` - Driver profiles and status
+    - `users` - Extended user profiles with type classification
+    - `categories` - Food categories with emojis and sorting
+    - `restaurants` - Complete restaurant information with ratings
+    - `restaurant_hours` - Operating hours for each day
+    - `menu_items` - Detailed menu with nutrition info and allergens
+    - `user_addresses` - Customer saved addresses with GPS coordinates
+    - `orders` - Complete order lifecycle with timestamps
+    - `order_items` - Individual items with special instructions
+    - `delivery_drivers` - Driver profiles with vehicle details
     - `deliveries` - Delivery assignments and tracking
-    - `user_addresses` - Customer saved addresses
-    - `restaurant_hours` - Restaurant operating hours
-    - `reviews` - Customer reviews for restaurants
+    - `reviews` - Customer feedback for restaurants and drivers
 
   2. Security
     - Enable RLS on all tables
-    - Add comprehensive policies for data access
-    - Separate policies for customers, restaurants, and drivers
+    - Add comprehensive policies for user access control
+    - Separate policies for customers, restaurant owners, and drivers
 
   3. Features
-    - Full order lifecycle management
-    - Driver assignment and tracking
-    - Restaurant management capabilities
-    - Review and rating system
-    - Address management
+    - Auto-generated order numbers with date prefixes
+    - Automatic timestamp updates
+    - Performance indexes
+    - Sample data for testing
 */
 
 -- Enable necessary extensions
@@ -655,6 +654,7 @@ DECLARE
     pizza_category_id uuid;
     italian_category_id uuid;
     beverages_category_id uuid;
+    desserts_category_id uuid;
 BEGIN
     -- Get restaurant ID
     SELECT id INTO mario_restaurant_id FROM restaurants WHERE name = 'Mario''s Pizza Palace' LIMIT 1;
@@ -663,6 +663,7 @@ BEGIN
     SELECT id INTO pizza_category_id FROM categories WHERE name = 'Pizza' LIMIT 1;
     SELECT id INTO italian_category_id FROM categories WHERE name = 'Italian' LIMIT 1;
     SELECT id INTO beverages_category_id FROM categories WHERE name = 'Beverages' LIMIT 1;
+    SELECT id INTO desserts_category_id FROM categories WHERE name = 'Desserts' LIMIT 1;
     
     IF mario_restaurant_id IS NOT NULL THEN
         INSERT INTO menu_items (restaurant_id, category_id, name, description, price, image, category, is_popular, preparation_time, calories) VALUES
@@ -671,7 +672,7 @@ BEGIN
         (mario_restaurant_id, pizza_category_id, 'Supreme Pizza', 'Pepperoni, sausage, bell peppers, onions, mushrooms, and olives', 26.99, 'https://images.pexels.com/photos/708587/pexels-photo-708587.jpeg?auto=compress&cs=tinysrgb&w=400', 'Mains', false, 25, 850),
         (mario_restaurant_id, italian_category_id, 'Caesar Salad', 'Crisp romaine lettuce, parmesan cheese, croutons, and our homemade Caesar dressing', 12.99, 'https://images.pexels.com/photos/1059905/pexels-photo-1059905.jpeg?auto=compress&cs=tinysrgb&w=400', 'Sides', false, 10, 320),
         (mario_restaurant_id, italian_category_id, 'Garlic Bread', 'Fresh baked bread with garlic butter and herbs', 6.99, 'https://images.pexels.com/photos/4198018/pexels-photo-4198018.jpeg?auto=compress&cs=tinysrgb&w=400', 'Sides', false, 8, 280),
-        (mario_restaurant_id, italian_category_id, 'Tiramisu', 'Classic Italian dessert with coffee-soaked ladyfingers and mascarpone', 8.99, 'https://images.pexels.com/photos/6880219/pexels-photo-6880219.jpeg?auto=compress&cs=tinysrgb&w=400', 'Desserts', false, 5, 420),
+        (mario_restaurant_id, desserts_category_id, 'Tiramisu', 'Classic Italian dessert with coffee-soaked ladyfingers and mascarpone', 8.99, 'https://images.pexels.com/photos/6880219/pexels-photo-6880219.jpeg?auto=compress&cs=tinysrgb&w=400', 'Desserts', false, 5, 420),
         (mario_restaurant_id, beverages_category_id, 'Coca Cola', 'Classic Coca Cola 330ml can', 2.99, 'https://images.pexels.com/photos/50593/coca-cola-cold-drink-soft-drink-coke-50593.jpeg?auto=compress&cs=tinysrgb&w=400', 'Beverages', false, 1, 140),
         (mario_restaurant_id, beverages_category_id, 'Italian Soda', 'Sparkling water with natural fruit flavors', 3.99, 'https://images.pexels.com/photos/1571458/pexels-photo-1571458.jpeg?auto=compress&cs=tinysrgb&w=400', 'Beverages', false, 1, 120);
     END IF;
