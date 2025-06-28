@@ -103,6 +103,10 @@ export const addressSchema = z.object({
     .string()
     .min(1, 'Postal code is required')
     .regex(/^\d{5}(-\d{4})?$/, 'Please enter a valid postal code'),
+  country: z
+    .string()
+    .min(1, 'Country is required')
+    .default('US'),
   deliveryInstructions: z
     .string()
     .max(200, 'Instructions must be less than 200 characters')
