@@ -1,0 +1,36 @@
+export function formatOrderTime(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+  
+  if (diffInHours < 1) {
+    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+    return `${diffInMinutes} min ago`;
+  } else if (diffInHours < 24) {
+    return `${diffInHours} hours ago`;
+  } else {
+    return date.toLocaleDateString();
+  }
+}
+
+export function formatCurrency(amount: number): string {
+  return `$${amount.toFixed(2)}`;
+}
+
+export function formatDistance(distance: string): string {
+  return distance;
+}
+
+export function formatTime(time: string): string {
+  return time;
+}
+
+export function formatPhoneNumber(phone: string): string {
+  // Basic phone number formatting
+  const cleaned = phone.replace(/\D/g, '');
+  const match = cleaned.match(/^(\d{3})(\d{3})(\d{4})$/);
+  if (match) {
+    return `(${match[1]}) ${match[2]}-${match[3]}`;
+  }
+  return phone;
+}
