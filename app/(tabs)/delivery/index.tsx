@@ -1,29 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Truck, DollarSign, Clock, CircleCheck as CheckCircle, RefreshCw, Phone, Navigation } from 'lucide-react-native';
 
 import StatCard from '@/components/common/StatCard';
 import DeliveryCard from '@/components/delivery/DeliveryCard';
 import Button from '@/components/ui/Button';
+import RealtimeIndicator from '@/components/common/RealtimeIndicator';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRealtimeDeliveries } from '@/hooks/useRealtimeDeliveries';
 import { 
   getDriverByUserId, 
   createDriverProfile,
   updateDriverOnlineStatus,
-  getAvailableDeliveries,
-  getDriverDeliveries,
-  acceptDelivery,
-  updateDeliveryStatus,
   getDriverStats
 } from '@/utils/database';
-import { DeliveryDriver, Delivery, DeliveryStats } from '@/types/database';
+import { DeliveryDriver, DeliveryStats } from '@/types/database';
 
 export default function DeliveryDashboard() {
   const { user } = useAuth();
   const [driver, setDriver] = useState<DeliveryDriver | null>(null);
-  const [availableDeliveries, setAvailableDeliveries] = useState<Delivery[]>([]);
-  const [activeDeliveries, setActiveDeliveries] = useState<Delivery[]>([]);
   const [stats, setStats] = useState<DeliveryStats>({
     todayEarnings: 0,
     completedDeliveries: 0,
@@ -37,11 +33,31 @@ export default function DeliveryDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Use realtime deliveries hook
+  const {
+    deliveries,
+    availableDeliveries,
+    loading: deliveriesLoading,
+    error: deliveriesError,
+    acceptDelivery,
+    updateDeliveryStatus,
+    refetch: refetchDeliveries
+  } = useRealtimeDeliveries({
+    driverId: driver?.id,
+    includeAvailable: driver?.is_online || false
+  });
+
   useEffect(() => {
     if (user) {
       loadDriverData();
     }
   }, [user]);
+
+  useEffect(() => {
+    if (driver) {
+      loadStats();
+    }
+  }, [driver, deliveries]); // Reload stats when deliveries change
 
   const loadDriverData = async () => {
     if (!user) return;
@@ -50,11 +66,9 @@ export default function DeliveryDashboard() {
       setLoading(true);
       setError(null);
 
-      // Get or create driver profile
       let driverData = await getDriverByUserId(user.id);
       
       if (!driverData) {
-        // Create a default driver profile for new delivery users
         driverData = await createDriverProfile(
           user.id,
           'DL123456789',
@@ -68,12 +82,6 @@ export default function DeliveryDashboard() {
       }
 
       setDriver(driverData);
-
-      // Load deliveries and stats
-      await Promise.all([
-        loadDeliveries(driverData.id),
-        loadStats(driverData.id)
-      ]);
     } catch (err) {
       console.error('Error loading driver data:', err);
       setError('Failed to load driver data. Please try again.');
@@ -82,44 +90,24 @@ export default function DeliveryDashboard() {
     }
   };
 
-  const loadDeliveries = async (driverId: string) => {
-    try {
-      const [available, active] = await Promise.all([
-        getAvailableDeliveries(),
-        getDriverDeliveries(driverId)
-      ]);
-      
-      setAvailableDeliveries(available);
-      setActiveDeliveries(active);
-    } catch (err) {
-      console.error('Error loading deliveries:', err);
-    }
-  };
+  const loadStats = async () => {
+    if (!driver) return;
 
-  const loadStats = async (driverId: string) => {
     try {
-      const statsData = await getDriverStats(driverId);
+      const statsData = await getDriverStats(driver.id);
       setStats(statsData);
     } catch (err) {
       console.error('Error loading stats:', err);
     }
   };
 
-  const refreshData = async () => {
-    if (!driver) return;
-
-    try {
-      setRefreshing(true);
-      await Promise.all([
-        loadDeliveries(driver.id),
-        loadStats(driver.id)
-      ]);
-    } catch (err) {
-      console.error('Error refreshing data:', err);
-      Alert.alert('Error', 'Failed to refresh data');
-    } finally {
-      setRefreshing(false);
-    }
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([
+      loadDriverData(),
+      refetchDeliveries()
+    ]);
+    setRefreshing(false);
   };
 
   const toggleOnlineStatus = async () => {
@@ -131,11 +119,6 @@ export default function DeliveryDashboard() {
       
       if (success) {
         setDriver(prev => prev ? { ...prev, is_online: newStatus } : null);
-        
-        if (newStatus) {
-          // Refresh available deliveries when going online
-          await loadDeliveries(driver.id);
-        }
       } else {
         Alert.alert('Error', 'Failed to update online status');
       }
@@ -146,14 +129,10 @@ export default function DeliveryDashboard() {
   };
 
   const handleAcceptDelivery = async (deliveryId: string) => {
-    if (!driver) return;
-
     try {
-      const success = await acceptDelivery(deliveryId, driver.id);
+      const success = await acceptDelivery(deliveryId);
       
       if (success) {
-        // Refresh deliveries
-        await loadDeliveries(driver.id);
         Alert.alert('Success', 'Delivery accepted! Head to the pickup location.');
       } else {
         Alert.alert('Error', 'Failed to accept delivery. It may have been taken by another driver.');
@@ -169,16 +148,9 @@ export default function DeliveryDashboard() {
       const success = await updateDeliveryStatus(deliveryId, newStatus);
       
       if (success) {
-        // Refresh deliveries and stats
-        if (driver) {
-          await Promise.all([
-            loadDeliveries(driver.id),
-            loadStats(driver.id)
-          ]);
-        }
-        
         if (newStatus === 'delivered') {
           Alert.alert('Success', 'Delivery completed! Great job!');
+          await loadStats(); // Refresh stats after completion
         }
       } else {
         Alert.alert('Error', 'Failed to update delivery status');
@@ -191,27 +163,25 @@ export default function DeliveryDashboard() {
 
   const callCustomer = (phone: string) => {
     console.log('Call customer:', phone);
-    // In a real app, this would open the phone dialer
     Alert.alert('Call Customer', `Would call: ${phone}`);
   };
 
   const navigate = (address: string) => {
     console.log('Navigate to:', address);
-    // In a real app, this would open maps with navigation
     Alert.alert('Navigate', `Would navigate to: ${address}`);
   };
 
-  const formatDeliveryForCard = (delivery: Delivery) => ({
+  const formatDeliveryForCard = (delivery: any) => ({
     id: delivery.id,
     restaurantName: delivery.order?.restaurant?.name || 'Unknown Restaurant',
-    customerName: `Customer ${delivery.order?.user_id.slice(-4) || '****'}`,
-    customerPhone: '+1 (555) 123-4567', // This would come from user profile
+    customerName: `Customer ${delivery.order?.user_id?.slice(-4) || '****'}`,
+    customerPhone: '+1 (555) 123-4567',
     pickupAddress: delivery.pickup_address,
     deliveryAddress: delivery.delivery_address,
     distance: delivery.distance_km ? `${delivery.distance_km} km` : '2.1 miles',
     estimatedTime: delivery.estimated_duration_minutes ? `${delivery.estimated_duration_minutes} min` : '15 min',
     payment: delivery.delivery_fee,
-    items: delivery.order?.order_items?.map(item => 
+    items: delivery.order?.order_items?.map((item: any) => 
       `${item.menu_item?.name || 'Unknown Item'} x${item.quantity}`
     ) || [],
     status: delivery.status === 'assigned' || delivery.status === 'picked_up' ? 'active' as const : 'available' as const
@@ -258,9 +228,10 @@ export default function DeliveryDashboard() {
           </View>
         </View>
         <View style={styles.headerRight}>
+          <RealtimeIndicator />
           <TouchableOpacity 
             style={styles.refreshButton} 
-            onPress={refreshData}
+            onPress={handleRefresh}
             disabled={refreshing}
           >
             <RefreshCw 
@@ -278,7 +249,17 @@ export default function DeliveryDashboard() {
         </View>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={['#FF6B35']}
+            tintColor="#FF6B35"
+          />
+        }
+      >
         {/* Today's Stats */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Today's Performance</Text>
@@ -311,11 +292,14 @@ export default function DeliveryDashboard() {
         </View>
 
         {/* Active Deliveries */}
-        {activeDeliveries.length > 0 && (
+        {deliveries.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Active Deliveries</Text>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Active Deliveries</Text>
+              <Text style={styles.liveIndicator}>Live Updates</Text>
+            </View>
             <View style={styles.deliveryContainer}>
-              {activeDeliveries.map((delivery) => (
+              {deliveries.map((delivery) => (
                 <DeliveryCard
                   key={delivery.id}
                   order={formatDeliveryForCard(delivery)}
@@ -330,30 +314,39 @@ export default function DeliveryDashboard() {
         )}
 
         {/* Available Orders */}
-        {driver.is_online && activeDeliveries.length === 0 && (
+        {driver.is_online && deliveries.length === 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Available Deliveries</Text>
-              <TouchableOpacity onPress={refreshData}>
-                <Text style={styles.viewAll}>Refresh</Text>
-              </TouchableOpacity>
+              <Text style={styles.liveIndicator}>Live Updates</Text>
             </View>
             <View style={styles.ordersContainer}>
-              {availableDeliveries.map((delivery) => (
-                <DeliveryCard
-                  key={delivery.id}
-                  order={formatDeliveryForCard(delivery)}
-                  onAccept={() => handleAcceptDelivery(delivery.id)}
-                />
-              ))}
-            </View>
+              {deliveriesLoading && availableDeliveries.length === 0 ? (
+                <View style={styles.deliveriesLoading}>
+                  <ActivityIndicator size="small" color="#FF6B35" />
+                  <Text style={styles.deliveriesLoadingText}>Loading deliveries...</Text>
+                </View>
+              ) : availableDeliveries.length > 0 ? (
+                availableDeliveries.map((delivery) => (
+                  <DeliveryCard
+                    key={delivery.id}
+                    order={formatDeliveryForCard(delivery)}
+                    onAccept={() => handleAcceptDelivery(delivery.id)}
+                  />
+                ))
+              ) : (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyTitle}>No deliveries available</Text>
+                  <Text style={styles.emptyText}>New delivery requests will appear here in real-time</Text>
+                </View>
+              )}
 
-            {availableDeliveries.length === 0 && (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyTitle}>No deliveries available</Text>
-                <Text style={styles.emptyText}>New delivery requests will appear here</Text>
-              </View>
-            )}
+              {deliveriesError && (
+                <View style={styles.errorState}>
+                  <Text style={styles.errorStateText}>{deliveriesError}</Text>
+                </View>
+              )}
+            </View>
           </View>
         )}
 
@@ -362,7 +355,7 @@ export default function DeliveryDashboard() {
           <View style={styles.offlineState}>
             <Truck size={48} color="#9CA3AF" />
             <Text style={styles.offlineTitle}>You're offline</Text>
-            <Text style={styles.offlineText}>Go online to start receiving delivery requests</Text>
+            <Text style={styles.offlineText}>Go online to start receiving delivery requests in real-time</Text>
           </View>
         )}
       </ScrollView>
@@ -453,10 +446,10 @@ const styles = StyleSheet.create({
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
   },
   refreshButton: {
     padding: 8,
-    marginRight: 12,
   },
   spinning: {
     transform: [{ rotate: '180deg' }],
@@ -478,10 +471,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 16,
   },
-  viewAll: {
-    fontSize: 14,
-    color: '#FF6B35',
-    fontFamily: 'Inter-Medium',
+  liveIndicator: {
+    fontSize: 12,
+    color: '#10B981',
+    fontFamily: 'Inter-SemiBold',
+    backgroundColor: '#D1FAE5',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   statsGrid: {
     flexDirection: 'row',
@@ -493,6 +490,18 @@ const styles = StyleSheet.create({
   },
   ordersContainer: {
     paddingHorizontal: 20,
+  },
+  deliveriesLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 32,
+  },
+  deliveriesLoadingText: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
+    marginLeft: 8,
   },
   emptyState: {
     alignItems: 'center',
@@ -510,6 +519,18 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     fontFamily: 'Inter-Regular',
     textAlign: 'center',
+  },
+  errorState: {
+    alignItems: 'center',
+    paddingVertical: 16,
+    backgroundColor: '#FEE2E2',
+    borderRadius: 8,
+    marginVertical: 8,
+  },
+  errorStateText: {
+    fontSize: 14,
+    color: '#EF4444',
+    fontFamily: 'Inter-Regular',
   },
   offlineState: {
     alignItems: 'center',

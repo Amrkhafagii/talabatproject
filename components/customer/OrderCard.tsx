@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Clock, CircleCheck as CheckCircle, Truck, MapPin } from 'lucide-react-native';
 import Card from '../ui/Card';
-import Badge from '../ui/Badge';
+import OrderStatusBadge from '../common/OrderStatusBadge';
 import Button from '../ui/Button';
 
 interface Order {
@@ -10,10 +10,11 @@ interface Order {
   restaurantName: string;
   items: string[];
   total: number;
-  status: 'preparing' | 'on_the_way' | 'delivered';
+  status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'picked_up' | 'on_the_way' | 'delivered' | 'cancelled';
   orderTime: string;
   deliveryTime?: string;
   address?: string;
+  estimatedDelivery?: string;
 }
 
 interface OrderCardProps {
@@ -22,57 +23,51 @@ interface OrderCardProps {
   onReorder?: () => void;
 }
 
-const statusConfig = {
-  preparing: {
-    label: 'Preparing',
-    variant: 'warning' as const,
-    icon: Clock,
-  },
-  on_the_way: {
-    label: 'On the way',
-    variant: 'primary' as const,
-    icon: Truck,
-  },
-  delivered: {
-    label: 'Delivered',
-    variant: 'success' as const,
-    icon: CheckCircle,
-  },
-};
-
 export default function OrderCard({ order, onTrack, onReorder }: OrderCardProps) {
-  const StatusIcon = statusConfig[order.status].icon;
-  const statusInfo = statusConfig[order.status];
+  const isActive = !['delivered', 'cancelled'].includes(order.status);
 
   return (
-    <Card style={styles.orderCard}>
+    <Card style={[styles.orderCard, isActive && styles.activeCard]}>
       {/* Order Header */}
       <View style={styles.orderHeader}>
         <View>
           <Text style={styles.restaurantName}>{order.restaurantName}</Text>
           <Text style={styles.orderTime}>{order.orderTime}</Text>
         </View>
-        <Badge text={statusInfo.label} variant={statusInfo.variant} />
+        <OrderStatusBadge status={order.status} />
       </View>
 
       {/* Order Items */}
       <View style={styles.orderItems}>
-        {order.items.map((item, index) => (
+        {order.items.slice(0, 3).map((item, index) => (
           <Text key={index} style={styles.orderItem}>• {item}</Text>
         ))}
+        {order.items.length > 3 && (
+          <Text style={styles.moreItems}>+{order.items.length - 3} more items</Text>
+        )}
       </View>
 
       {/* Delivery Info */}
-      {order.status !== 'delivered' && order.address && order.deliveryTime && (
+      {isActive && order.address && (
         <View style={styles.deliveryInfo}>
           <View style={styles.deliveryRow}>
             <MapPin size={16} color="#6B7280" />
             <Text style={styles.deliveryText}>{order.address}</Text>
           </View>
-          <View style={styles.deliveryRow}>
-            <Clock size={16} color="#6B7280" />
-            <Text style={styles.deliveryText}>Estimated: {order.deliveryTime}</Text>
-          </View>
+          {order.deliveryTime && (
+            <View style={styles.deliveryRow}>
+              <Clock size={16} color="#6B7280" />
+              <Text style={styles.deliveryText}>Estimated: {order.deliveryTime}</Text>
+            </View>
+          )}
+          {order.estimatedDelivery && (
+            <View style={styles.deliveryRow}>
+              <Truck size={16} color="#FF6B35" />
+              <Text style={styles.deliveryTextHighlight}>
+                Expected: {order.estimatedDelivery}
+              </Text>
+            </View>
+          )}
         </View>
       )}
 
@@ -80,11 +75,12 @@ export default function OrderCard({ order, onTrack, onReorder }: OrderCardProps)
       <View style={styles.orderFooter}>
         <Text style={styles.orderTotal}>Total: ${order.total.toFixed(2)}</Text>
         <View style={styles.orderActions}>
-          {order.status !== 'delivered' && onTrack ? (
+          {onTrack && (
             <Button title="Track Order" onPress={onTrack} size="small" />
-          ) : onReorder ? (
+          )}
+          {onReorder && (
             <Button title="Reorder" onPress={onReorder} variant="outline" size="small" />
-          ) : null}
+          )}
         </View>
       </View>
     </Card>
@@ -95,6 +91,10 @@ const styles = StyleSheet.create({
   orderCard: {
     marginHorizontal: 20,
     marginBottom: 16,
+  },
+  activeCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF6B35',
   },
   orderHeader: {
     flexDirection: 'row',
@@ -122,6 +122,12 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     lineHeight: 20,
   },
+  moreItems: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    fontFamily: 'Inter-Regular',
+    fontStyle: 'italic',
+  },
   deliveryInfo: {
     marginBottom: 12,
     paddingTop: 12,
@@ -138,6 +144,14 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     fontFamily: 'Inter-Regular',
     marginLeft: 8,
+    flex: 1,
+  },
+  deliveryTextHighlight: {
+    fontSize: 14,
+    color: '#FF6B35',
+    fontFamily: 'Inter-SemiBold',
+    marginLeft: 8,
+    flex: 1,
   },
   orderFooter: {
     flexDirection: 'row',

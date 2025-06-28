@@ -1,59 +1,54 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
 import Header from '@/components/ui/Header';
 import OrderCard from '@/components/customer/OrderCard';
 import Button from '@/components/ui/Button';
+import RealtimeIndicator from '@/components/common/RealtimeIndicator';
 import { useAuth } from '@/contexts/AuthContext';
-import { getUserOrders } from '@/utils/database';
-import { Order } from '@/types/database';
+import { useRealtimeOrders } from '@/hooks/useRealtimeOrders';
 import { formatOrderTime } from '@/utils/formatters';
 import { getOrderItems } from '@/utils/orderHelpers';
 
 export default function Orders() {
   const [selectedTab, setSelectedTab] = useState('active');
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const { user } = useAuth();
 
-  useEffect(() => {
-    if (user) {
-      loadOrders();
-    }
-  }, [user]);
+  const { orders, loading, error, refetch } = useRealtimeOrders({
+    userId: user?.id
+  });
 
-  const loadOrders = async () => {
-    if (!user) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-      const ordersData = await getUserOrders(user.id);
-      setOrders(ordersData);
-    } catch (err) {
-      console.error('Error loading orders:', err);
-      setError('Failed to load orders. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    refetch();
+    // Simulate refresh delay
+    setTimeout(() => setRefreshing(false), 1000);
   };
 
-  const activeOrders = orders.filter(order => order.status !== 'delivered');
-  const pastOrders = orders.filter(order => order.status === 'delivered');
+  const activeOrders = orders.filter(order => 
+    !['delivered', 'cancelled'].includes(order.status)
+  );
+  const pastOrders = orders.filter(order => 
+    ['delivered', 'cancelled'].includes(order.status)
+  );
+  
   const displayOrders = selectedTab === 'active' ? activeOrders : pastOrders;
 
   const trackOrder = (orderId: string) => {
-    console.log('Track order:', orderId);
+    router.push({
+      pathname: '/customer/track-order',
+      params: { orderId }
+    });
   };
 
   const reorder = (orderId: string) => {
     console.log('Reorder:', orderId);
   };
 
-  if (loading) {
+  if (loading && !refreshing) {
     return (
       <SafeAreaView style={styles.container}>
         <Header title="My Orders" showBackButton />
@@ -71,7 +66,7 @@ export default function Orders() {
         <Header title="My Orders" showBackButton />
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={loadOrders}>
+          <TouchableOpacity style={styles.retryButton} onPress={handleRefresh}>
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
         </View>
@@ -81,7 +76,11 @@ export default function Orders() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Header title="My Orders" showBackButton />
+      <Header 
+        title="My Orders" 
+        showBackButton 
+        rightComponent={<RealtimeIndicator />}
+      />
 
       {/* Tabs */}
       <View style={styles.tabContainer}>
@@ -104,7 +103,18 @@ export default function Orders() {
       </View>
 
       {/* Orders List */}
-      <ScrollView showsVerticalScrollIndicator={false} style={styles.content}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false} 
+        style={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={['#FF6B35']}
+            tintColor="#FF6B35"
+          />
+        }
+      >
         {displayOrders.map((order) => (
           <OrderCard
             key={order.id}
@@ -115,11 +125,12 @@ export default function Orders() {
               total: order.total,
               status: order.status as any,
               orderTime: formatOrderTime(order.created_at),
-              deliveryTime: order.status !== 'delivered' ? '25-30 min' : undefined,
-              address: order.delivery_address
+              deliveryTime: !['delivered', 'cancelled'].includes(order.status) ? '25-30 min' : undefined,
+              address: order.delivery_address,
+              estimatedDelivery: order.estimated_delivery_time
             }}
-            onTrack={order.status !== 'delivered' ? () => trackOrder(order.id) : undefined}
-            onReorder={order.status === 'delivered' ? () => reorder(order.id) : undefined}
+            onTrack={!['delivered', 'cancelled'].includes(order.status) ? () => trackOrder(order.id) : undefined}
+            onReorder={['delivered'].includes(order.status) ? () => reorder(order.id) : undefined}
           />
         ))}
 

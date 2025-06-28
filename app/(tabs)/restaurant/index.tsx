@@ -1,26 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Store, DollarSign, Clock, Star, TrendingUp, Bell, RefreshCw } from 'lucide-react-native';
 
 import StatCard from '@/components/common/StatCard';
 import OrderManagementCard from '@/components/restaurant/OrderManagementCard';
 import Button from '@/components/ui/Button';
+import RealtimeIndicator from '@/components/common/RealtimeIndicator';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRealtimeOrders } from '@/hooks/useRealtimeOrders';
 import { 
   getRestaurantByUserId, 
-  getRestaurantOrders, 
-  getRestaurantStats, 
-  updateOrderStatus 
+  getRestaurantStats
 } from '@/utils/database';
-import { Restaurant, Order, RestaurantStats } from '@/types/database';
+import { Restaurant, RestaurantStats } from '@/types/database';
 import { formatOrderTime } from '@/utils/formatters';
 import { getOrderItems } from '@/utils/orderHelpers';
 
 export default function RestaurantDashboard() {
   const { user } = useAuth();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
-  const [orders, setOrders] = useState<Order[]>([]);
   const [stats, setStats] = useState<RestaurantStats>({
     todayRevenue: 0,
     todayOrders: 0,
@@ -35,11 +34,28 @@ export default function RestaurantDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Use realtime orders hook
+  const { 
+    orders, 
+    loading: ordersLoading, 
+    error: ordersError, 
+    updateOrderStatus,
+    refetch: refetchOrders
+  } = useRealtimeOrders({
+    restaurantId: restaurant?.id
+  });
+
   useEffect(() => {
     if (user) {
       loadRestaurantData();
     }
   }, [user]);
+
+  useEffect(() => {
+    if (restaurant) {
+      loadStats();
+    }
+  }, [restaurant, orders]); // Reload stats when orders change
 
   const loadRestaurantData = async () => {
     if (!user) return;
@@ -48,7 +64,6 @@ export default function RestaurantDashboard() {
       setLoading(true);
       setError(null);
 
-      // Get restaurant data
       const restaurantData = await getRestaurantByUserId(user.id);
       if (!restaurantData) {
         setError('No restaurant found for this user');
@@ -56,12 +71,6 @@ export default function RestaurantDashboard() {
       }
 
       setRestaurant(restaurantData);
-
-      // Load orders and stats
-      await Promise.all([
-        loadOrders(restaurantData.id),
-        loadStats(restaurantData.id)
-      ]);
     } catch (err) {
       console.error('Error loading restaurant data:', err);
       setError('Failed to load restaurant data. Please try again.');
@@ -70,55 +79,33 @@ export default function RestaurantDashboard() {
     }
   };
 
-  const loadOrders = async (restaurantId: string) => {
-    try {
-      const ordersData = await getRestaurantOrders(restaurantId);
-      setOrders(ordersData);
-    } catch (err) {
-      console.error('Error loading orders:', err);
-    }
-  };
+  const loadStats = async () => {
+    if (!restaurant) return;
 
-  const loadStats = async (restaurantId: string) => {
     try {
-      const statsData = await getRestaurantStats(restaurantId);
+      const statsData = await getRestaurantStats(restaurant.id);
       setStats(statsData);
     } catch (err) {
       console.error('Error loading stats:', err);
     }
   };
 
-  const refreshData = async () => {
-    if (!restaurant) return;
-
-    try {
-      setRefreshing(true);
-      await Promise.all([
-        loadOrders(restaurant.id),
-        loadStats(restaurant.id)
-      ]);
-    } catch (err) {
-      console.error('Error refreshing data:', err);
-      Alert.alert('Error', 'Failed to refresh data');
-    } finally {
-      setRefreshing(false);
-    }
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([
+      loadRestaurantData(),
+      refetchOrders()
+    ]);
+    setRefreshing(false);
   };
 
   const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
       const success = await updateOrderStatus(orderId, newStatus);
       if (success) {
-        // Update local state
-        setOrders(prevOrders =>
-          prevOrders.map(order =>
-            order.id === orderId ? { ...order, status: newStatus as any } : order
-          )
-        );
-        
-        // Refresh stats if order is completed
-        if (newStatus === 'delivered' && restaurant) {
-          await loadStats(restaurant.id);
+        // Stats will be updated automatically when orders change
+        if (newStatus === 'delivered') {
+          await loadStats();
         }
       } else {
         Alert.alert('Error', 'Failed to update order status');
@@ -129,8 +116,8 @@ export default function RestaurantDashboard() {
     }
   };
 
-  const recentOrders = orders.slice(0, 5); // Show only recent 5 orders
-  const newOrdersCount = orders.filter(order => order.status === 'preparing').length;
+  const recentOrders = orders.slice(0, 5);
+  const newOrdersCount = orders.filter(order => order.status === 'pending').length;
 
   if (loading) {
     return (
@@ -168,9 +155,10 @@ export default function RestaurantDashboard() {
           </View>
         </View>
         <View style={styles.headerRight}>
+          <RealtimeIndicator />
           <TouchableOpacity 
             style={styles.refreshButton} 
-            onPress={refreshData}
+            onPress={handleRefresh}
             disabled={refreshing}
           >
             <RefreshCw 
@@ -190,7 +178,17 @@ export default function RestaurantDashboard() {
         </View>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={['#FF6B35']}
+            tintColor="#FF6B35"
+          />
+        }
+      >
         {/* Today's Stats */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Today's Performance</Text>
@@ -226,35 +224,46 @@ export default function RestaurantDashboard() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Orders</Text>
-            <TouchableOpacity onPress={refreshData}>
-              <Text style={styles.viewAll}>Refresh</Text>
-            </TouchableOpacity>
+            <Text style={styles.liveIndicator}>Live Updates</Text>
           </View>
           
           <View style={styles.ordersContainer}>
-            {recentOrders.map((order) => (
-              <OrderManagementCard
-                key={order.id}
-                order={{
-                  id: order.id,
-                  orderNumber: `#${order.order_number || order.id.slice(-6).toUpperCase()}`,
-                  customer: `Customer ${order.user_id.slice(-4)}`,
-                  items: getOrderItems(order),
-                  total: order.total,
-                  status: order.status === 'preparing' ? 'new' : order.status === 'ready' ? 'ready' : 'preparing',
-                  time: formatOrderTime(order.created_at)
-                }}
-                onAccept={order.status === 'preparing' ? () => handleUpdateOrderStatus(order.id, 'ready') : undefined}
-                onReject={order.status === 'preparing' ? () => handleUpdateOrderStatus(order.id, 'cancelled') : undefined}
-                onMarkReady={order.status === 'preparing' ? () => handleUpdateOrderStatus(order.id, 'ready') : undefined}
-                onMarkDelivered={order.status === 'ready' ? () => handleUpdateOrderStatus(order.id, 'on_the_way') : undefined}
-              />
-            ))}
-
-            {recentOrders.length === 0 && (
+            {ordersLoading && orders.length === 0 ? (
+              <View style={styles.ordersLoading}>
+                <ActivityIndicator size="small" color="#FF6B35" />
+                <Text style={styles.ordersLoadingText}>Loading orders...</Text>
+              </View>
+            ) : recentOrders.length > 0 ? (
+              recentOrders.map((order) => (
+                <OrderManagementCard
+                  key={order.id}
+                  order={{
+                    id: order.id,
+                    orderNumber: `#${order.id.slice(-6).toUpperCase()}`,
+                    customer: `Customer ${order.user_id.slice(-4)}`,
+                    items: getOrderItems(order),
+                    total: order.total,
+                    status: order.status === 'pending' ? 'new' : 
+                           order.status === 'preparing' ? 'preparing' : 
+                           order.status === 'ready' ? 'ready' : 'preparing',
+                    time: formatOrderTime(order.created_at)
+                  }}
+                  onAccept={order.status === 'pending' ? () => handleUpdateOrderStatus(order.id, 'confirmed') : undefined}
+                  onReject={order.status === 'pending' ? () => handleUpdateOrderStatus(order.id, 'cancelled') : undefined}
+                  onMarkReady={order.status === 'preparing' || order.status === 'confirmed' ? () => handleUpdateOrderStatus(order.id, 'ready') : undefined}
+                  onMarkDelivered={order.status === 'ready' ? () => handleUpdateOrderStatus(order.id, 'picked_up') : undefined}
+                />
+              ))
+            ) : (
               <View style={styles.emptyState}>
                 <Text style={styles.emptyTitle}>No orders yet</Text>
-                <Text style={styles.emptyText}>New orders will appear here</Text>
+                <Text style={styles.emptyText}>New orders will appear here in real-time</Text>
+              </View>
+            )}
+
+            {ordersError && (
+              <View style={styles.errorState}>
+                <Text style={styles.errorStateText}>{ordersError}</Text>
               </View>
             )}
           </View>
@@ -362,10 +371,10 @@ const styles = StyleSheet.create({
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
   },
   refreshButton: {
     padding: 8,
-    marginRight: 8,
   },
   spinning: {
     transform: [{ rotate: '180deg' }],
@@ -407,10 +416,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 16,
   },
-  viewAll: {
-    fontSize: 14,
-    color: '#FF6B35',
-    fontFamily: 'Inter-Medium',
+  liveIndicator: {
+    fontSize: 12,
+    color: '#10B981',
+    fontFamily: 'Inter-SemiBold',
+    backgroundColor: '#D1FAE5',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   statsGrid: {
     flexDirection: 'row',
@@ -419,6 +432,18 @@ const styles = StyleSheet.create({
   },
   ordersContainer: {
     paddingHorizontal: 20,
+  },
+  ordersLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 32,
+  },
+  ordersLoadingText: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
+    marginLeft: 8,
   },
   emptyState: {
     alignItems: 'center',
@@ -433,6 +458,19 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     color: '#6B7280',
+    fontFamily: 'Inter-Regular',
+    textAlign: 'center',
+  },
+  errorState: {
+    alignItems: 'center',
+    paddingVertical: 16,
+    backgroundColor: '#FEE2E2',
+    borderRadius: 8,
+    marginVertical: 8,
+  },
+  errorStateText: {
+    fontSize: 14,
+    color: '#EF4444',
     fontFamily: 'Inter-Regular',
   },
   quickActions: {
