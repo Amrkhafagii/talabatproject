@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { MapPin, Home, Briefcase, Heart } from 'lucide-react-native';
+import { MapPin, Chrome as Home, Briefcase, Heart } from 'lucide-react-native';
 
 import Header from '@/components/ui/Header';
 import Button from '@/components/ui/Button';

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { MapPin, Plus, Edit, Trash2, Star } from 'lucide-react-native';
+import { MapPin, Plus, CreditCard as Edit, Trash2, Star } from 'lucide-react-native';
 
 import Header from '@/components/ui/Header';
 import Button from '@/components/ui/Button';
