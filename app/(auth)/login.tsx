@@ -92,9 +92,9 @@ export default function Login() {
         >
           <View style={styles.content}>
             <View style={styles.welcomeSection}>
-              <Text style={styles.welcomeTitle}>Sign in to your account</Text>
+              <Text style={styles.welcomeTitle}>Welcome to FoodieExpress</Text>
               <Text style={styles.welcomeSubtitle}>
-                Enter your credentials to access your account
+                Sign in to your account to start ordering delicious food from your favorite restaurants
               </Text>
             </View>
 
@@ -204,18 +204,22 @@ const styles = StyleSheet.create({
   },
   welcomeSection: {
     marginBottom: 40,
+    alignItems: 'center',
   },
   welcomeTitle: {
-    fontSize: 24,
+    fontSize: 28,
     fontFamily: 'Inter-Bold',
     color: '#111827',
-    marginBottom: 8,
+    marginBottom: 12,
+    textAlign: 'center',
   },
   welcomeSubtitle: {
     fontSize: 16,
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
     lineHeight: 24,
+    textAlign: 'center',
+    paddingHorizontal: 16,
   },
   formSection: {
     marginBottom: 40,
@@ -275,8 +279,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0F9FF',
     borderWidth: 1,
     borderColor: '#BAE6FD',
-    borderRadius: 8,
-    padding: 12,
+    borderRadius: 12,
+    padding: 16,
     marginTop: 'auto',
     marginBottom: 20,
   },

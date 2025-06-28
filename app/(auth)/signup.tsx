@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Animated } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { User, Store, Truck, Eye, EyeOff } from 'lucide-react-native';
@@ -39,6 +39,7 @@ export default function SignUp() {
   });
 
   const selectedUserType = watch('userType');
+  const password = watch('password');
 
   const onSubmit = async (data: SignupFormData) => {
     setFormError('');
@@ -52,7 +53,7 @@ export default function SignUp() {
         if (error.message.includes('User already registered')) {
           setFormError('An account with this email already exists. Please sign in instead.');
         } else if (error.message.includes('Password should be at least')) {
-          setFormError('Password must be at least 6 characters long.');
+          setFormError('Password must be at least 8 characters long.');
         } else if (error.message.includes('Invalid email')) {
           setFormError('Please enter a valid email address.');
         } else {
@@ -77,6 +78,28 @@ export default function SignUp() {
     setValue('userType', userType);
   };
 
+  const getPasswordStrength = (password: string) => {
+    let strength = 0;
+    const checks = {
+      length: password.length >= 8,
+      lowercase: /[a-z]/.test(password),
+      uppercase: /[A-Z]/.test(password),
+      number: /\d/.test(password),
+      special: /[!@#$%^&*(),.?":{}|<>]/.test(password),
+    };
+
+    strength = Object.values(checks).filter(Boolean).length;
+    
+    return {
+      score: strength,
+      checks,
+      label: strength < 2 ? 'Weak' : strength < 4 ? 'Medium' : 'Strong',
+      color: strength < 2 ? '#EF4444' : strength < 4 ? '#F59E0B' : '#10B981',
+    };
+  };
+
+  const passwordStrength = password ? getPasswordStrength(password) : null;
+
   return (
     <SafeAreaView style={styles.container}>
       <Header title="Create Account" showBackButton />
@@ -97,7 +120,7 @@ export default function SignUp() {
             <View style={styles.welcomeSection}>
               <Text style={styles.welcomeTitle}>Join FoodieExpress</Text>
               <Text style={styles.welcomeSubtitle}>
-                Create your account to get started
+                Create your account to start ordering delicious food, managing your restaurant, or delivering meals
               </Text>
             </View>
 
@@ -149,6 +172,52 @@ export default function SignUp() {
                   </TouchableOpacity>
                 }
               />
+
+              {/* Password Strength Indicator */}
+              {passwordStrength && (
+                <View style={styles.passwordStrengthContainer}>
+                  <View style={styles.strengthHeader}>
+                    <Text style={styles.strengthLabel}>Password Strength:</Text>
+                    <Text style={[styles.strengthValue, { color: passwordStrength.color }]}>
+                      {passwordStrength.label}
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.strengthBar}>
+                    {[1, 2, 3, 4, 5].map((level) => (
+                      <View
+                        key={level}
+                        style={[
+                          styles.strengthSegment,
+                          {
+                            backgroundColor: level <= passwordStrength.score 
+                              ? passwordStrength.color 
+                              : '#E5E7EB'
+                          }
+                        ]}
+                      />
+                    ))}
+                  </View>
+
+                  <View style={styles.strengthChecks}>
+                    <Text style={[styles.checkItem, passwordStrength.checks.length && styles.checkPassed]}>
+                      ✓ At least 8 characters
+                    </Text>
+                    <Text style={[styles.checkItem, passwordStrength.checks.lowercase && styles.checkPassed]}>
+                      ✓ One lowercase letter
+                    </Text>
+                    <Text style={[styles.checkItem, passwordStrength.checks.uppercase && styles.checkPassed]}>
+                      ✓ One uppercase letter
+                    </Text>
+                    <Text style={[styles.checkItem, passwordStrength.checks.number && styles.checkPassed]}>
+                      ✓ One number
+                    </Text>
+                    <Text style={[styles.checkItem, passwordStrength.checks.special && styles.checkPassed]}>
+                      ✓ One special character
+                    </Text>
+                  </View>
+                </View>
+              )}
 
               <FormField
                 control={control}
@@ -213,18 +282,22 @@ const styles = StyleSheet.create({
   },
   welcomeSection: {
     marginBottom: 32,
+    alignItems: 'center',
   },
   welcomeTitle: {
-    fontSize: 24,
+    fontSize: 28,
     fontFamily: 'Inter-Bold',
     color: '#111827',
-    marginBottom: 8,
+    marginBottom: 12,
+    textAlign: 'center',
   },
   welcomeSubtitle: {
     fontSize: 16,
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
     lineHeight: 24,
+    textAlign: 'center',
+    paddingHorizontal: 16,
   },
   errorContainer: {
     backgroundColor: '#FEE2E2',
@@ -249,6 +322,51 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     color: '#111827',
     marginBottom: 16,
+  },
+  passwordStrengthContainer: {
+    marginTop: -12,
+    marginBottom: 16,
+    padding: 12,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  strengthHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  strengthLabel: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
+  },
+  strengthValue: {
+    fontSize: 12,
+    fontFamily: 'Inter-SemiBold',
+  },
+  strengthBar: {
+    flexDirection: 'row',
+    gap: 2,
+    marginBottom: 12,
+  },
+  strengthSegment: {
+    flex: 1,
+    height: 4,
+    borderRadius: 2,
+  },
+  strengthChecks: {
+    gap: 2,
+  },
+  checkItem: {
+    fontSize: 11,
+    fontFamily: 'Inter-Regular',
+    color: '#9CA3AF',
+  },
+  checkPassed: {
+    color: '#10B981',
   },
   signUpButton: {
     marginBottom: 24,

@@ -12,8 +12,8 @@ export default function Index() {
         // User is authenticated, redirect to appropriate tab based on user type
         router.replace('/(tabs)');
       } else {
-        // User is not authenticated, redirect to welcome screen
-        router.replace('/(auth)/welcome');
+        // User is not authenticated, redirect directly to login screen
+        router.replace('/(auth)/login');
       }
     }
   }, [user, loading, userType]);
