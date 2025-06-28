@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Store, DollarSign, Clock, Star, TrendingUp, Bell, RefreshCw } from 'lucide-react-native';
+import { Store, DollarSign, Clock, Star, TrendingUp, Bell, RefreshCw, Menu } from 'lucide-react-native';
+import { router } from 'expo-router';
 
 import StatCard from '@/components/common/StatCard';
 import OrderManagementCard from '@/components/restaurant/OrderManagementCard';
@@ -114,6 +115,10 @@ export default function RestaurantDashboard() {
       console.error('Error updating order status:', err);
       Alert.alert('Error', 'Failed to update order status');
     }
+  };
+
+  const navigateToMenu = () => {
+    router.push('/restaurant/menu');
   };
 
   const recentOrders = orders.slice(0, 5);
@@ -275,7 +280,7 @@ export default function RestaurantDashboard() {
           <View style={styles.quickActions}>
             <Button
               title="Manage Menu"
-              onPress={() => console.log('Manage Menu')}
+              onPress={navigateToMenu}
               variant="outline"
               style={styles.actionButton}
             />
