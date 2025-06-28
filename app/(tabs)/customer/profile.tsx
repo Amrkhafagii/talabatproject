@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, User, MapPin, CreditCard, Bell, CircleHelp as HelpCircle, LogOut, Edit, Plus } from 'lucide-react-native';
+import { ArrowLeft, User, MapPin, CreditCard, Bell, CircleHelp as HelpCircle, LogOut, CreditCard as Edit, Plus } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { getUserProfile, getUserAddresses } from '@/utils/database';
