@@ -1,26 +1,9 @@
-import { Tabs, router } from 'expo-router';
+import { Tabs } from 'expo-router';
 import { User, Store, Truck } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
-import { useEffect } from 'react';
 
 export default function TabLayout() {
   const { user, userType, loading } = useAuth();
-
-  useEffect(() => {
-    // Handle all navigation logic in a single useEffect
-    if (!loading) {
-      if (!user) {
-        router.replace('/(auth)/welcome');
-        return;
-      }
-      
-      // If userType is invalid or null, redirect to welcome
-      if (!userType || !['customer', 'restaurant', 'delivery'].includes(userType)) {
-        router.replace('/(auth)/welcome');
-        return;
-      }
-    }
-  }, [user, userType, loading]);
 
   // Return null while loading or during redirects
   if (loading || !user || !userType || !['customer', 'restaurant', 'delivery'].includes(userType)) {
