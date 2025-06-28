@@ -36,6 +36,31 @@ export const signupSchema = z.object({
   path: ["confirmPassword"],
 });
 
+// Password reset schemas
+export const forgotPasswordSchema = z.object({
+  email: z
+    .string()
+    .min(1, 'Email is required')
+    .email('Please enter a valid email address'),
+});
+
+export const resetPasswordSchema = z.object({
+  password: z
+    .string()
+    .min(1, 'Password is required')
+    .min(8, 'Password must be at least 8 characters')
+    .regex(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+      'Password must contain at least one uppercase letter, one lowercase letter, and one number'
+    ),
+  confirmPassword: z
+    .string()
+    .min(1, 'Please confirm your password'),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
 // Profile schemas
 export const profileSchema = z.object({
   fullName: z
@@ -182,6 +207,8 @@ export const contactSchema = z.object({
 // Type exports for TypeScript
 export type LoginFormData = z.infer<typeof loginSchema>;
 export type SignupFormData = z.infer<typeof signupSchema>;
+export type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
 export type ProfileFormData = z.infer<typeof profileSchema>;
 export type AddressFormData = z.infer<typeof addressSchema>;
 export type MenuItemFormData = z.infer<typeof menuItemSchema>;
