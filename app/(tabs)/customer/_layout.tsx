@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
-import { Stack } from 'expo-router';
+import { Tabs } from 'expo-router';
 import { router } from 'expo-router';
+import { Home, ShoppingCart, Receipt, User } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function CustomerLayout() {
@@ -35,24 +36,112 @@ export default function CustomerLayout() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="index" />
-      <Stack.Screen name="restaurant" />
-      <Stack.Screen name="cart" />
-      <Stack.Screen name="orders" />
-      <Stack.Screen name="profile" />
-      <Stack.Screen name="edit-profile" />
-      <Stack.Screen name="addresses" />
-      <Stack.Screen name="add-address" />
-      <Stack.Screen name="edit-address" />
-      <Stack.Screen name="select-address" />
-      <Stack.Screen 
-        name="filters" 
-        options={{ 
-          presentation: 'modal',
-          headerShown: false 
-        }} 
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+        tabBarStyle: {
+          backgroundColor: '#FFFFFF',
+          borderTopWidth: 1,
+          borderTopColor: '#E5E7EB',
+          paddingTop: 8,
+          paddingBottom: 8,
+          height: 70,
+        },
+        tabBarActiveTintColor: '#FF6B35',
+        tabBarInactiveTintColor: '#6B7280',
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontFamily: 'Inter-Medium',
+          marginTop: 4,
+        },
+      }}>
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'Home',
+          tabBarIcon: ({ size, color }) => (
+            <Home size={size} color={color} />
+          ),
+        }}
       />
-    </Stack>
+      <Tabs.Screen
+        name="cart"
+        options={{
+          title: 'Cart',
+          tabBarIcon: ({ size, color }) => (
+            <ShoppingCart size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="orders"
+        options={{
+          title: 'Orders',
+          tabBarIcon: ({ size, color }) => (
+            <Receipt size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ size, color }) => (
+            <User size={size} color={color} />
+          ),
+        }}
+      />
+      
+      {/* Non-tab screens - these won't appear in the tab bar */}
+      <Tabs.Screen
+        name="restaurant"
+        options={{
+          href: null, // This removes it from the tab bar
+        }}
+      />
+      <Tabs.Screen
+        name="filters"
+        options={{
+          href: null,
+          presentation: 'modal',
+        }}
+      />
+      <Tabs.Screen
+        name="edit-profile"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="addresses"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="add-address"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="edit-address"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="select-address"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="track-order"
+        options={{
+          href: null,
+        }}
+      />
+    </Tabs>
   );
 }

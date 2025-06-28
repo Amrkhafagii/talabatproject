@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
-import { Stack } from 'expo-router';
+import { Tabs } from 'expo-router';
 import { router } from 'expo-router';
+import { LayoutDashboard, BookOpen, Receipt, Settings } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function RestaurantLayout() {
@@ -35,13 +36,75 @@ export default function RestaurantLayout() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="index" />
-      <Stack.Screen name="menu" />
-      <Stack.Screen name="add-menu-item" />
-      <Stack.Screen name="edit-menu-item" />
-      <Stack.Screen name="orders" />
-      <Stack.Screen name="settings" />
-    </Stack>
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+        tabBarStyle: {
+          backgroundColor: '#FFFFFF',
+          borderTopWidth: 1,
+          borderTopColor: '#E5E7EB',
+          paddingTop: 8,
+          paddingBottom: 8,
+          height: 70,
+        },
+        tabBarActiveTintColor: '#FF6B35',
+        tabBarInactiveTintColor: '#6B7280',
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontFamily: 'Inter-Medium',
+          marginTop: 4,
+        },
+      }}>
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'Dashboard',
+          tabBarIcon: ({ size, color }) => (
+            <LayoutDashboard size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="menu"
+        options={{
+          title: 'Menu',
+          tabBarIcon: ({ size, color }) => (
+            <BookOpen size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="orders"
+        options={{
+          title: 'Orders',
+          tabBarIcon: ({ size, color }) => (
+            <Receipt size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: 'Settings',
+          tabBarIcon: ({ size, color }) => (
+            <Settings size={size} color={color} />
+          ),
+        }}
+      />
+      
+      {/* Non-tab screens - these won't appear in the tab bar */}
+      <Tabs.Screen
+        name="add-menu-item"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="edit-menu-item"
+        options={{
+          href: null,
+        }}
+      />
+    </Tabs>
   );
 }
