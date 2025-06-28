@@ -108,6 +108,8 @@ export const addressSchema = z.object({
     .max(200, 'Instructions must be less than 200 characters')
     .optional(),
   isDefault: z.boolean().optional(),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
 });
 
 // Restaurant schemas
