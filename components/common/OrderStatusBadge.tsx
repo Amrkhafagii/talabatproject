@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Clock, CheckCircle, Truck, Package, XCircle } from 'lucide-react-native';
+import { Clock, CircleCheck as CheckCircle, Truck, Package, Circle as XCircle } from 'lucide-react-native';
 
 interface OrderStatusBadgeProps {
   status: string;
