@@ -90,6 +90,7 @@ const styles = StyleSheet.create({
   },
   itemImageContainer: {
     position: 'relative',
+    overflow: 'visible', // Ensure buttons are visible
   },
   itemImage: {
     width: 80,
@@ -98,8 +99,8 @@ const styles = StyleSheet.create({
   },
   addButton: {
     position: 'absolute',
-    bottom: -8,
-    right: -8,
+    bottom: 4, // Changed from -8 to 4
+    right: 4,  // Changed from -8 to 4
     width: 32,
     height: 32,
     borderRadius: 16,
@@ -114,8 +115,8 @@ const styles = StyleSheet.create({
   },
   quantityControls: {
     position: 'absolute',
-    bottom: -8,
-    right: -8,
+    bottom: 4, // Changed from -8 to 4
+    right: 4,  // Changed from -8 to 4
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
