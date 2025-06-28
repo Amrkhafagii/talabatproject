@@ -18,7 +18,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState('');
   
-  const { signIn } = useAuth();
+  const { signIn, userType } = useAuth();
 
   const {
     control,
@@ -58,7 +58,21 @@ export default function Login() {
       } else {
         // Note: Supabase automatically handles session persistence
         // The "Remember Me" checkbox is primarily for user reassurance
-        router.replace('/(tabs)');
+        
+        // Wait a moment for the auth context to update with userType
+        setTimeout(() => {
+          // Redirect to the specific role dashboard
+          if (userType === 'customer') {
+            router.replace('/(tabs)/customer');
+          } else if (userType === 'restaurant') {
+            router.replace('/(tabs)/restaurant');
+          } else if (userType === 'delivery') {
+            router.replace('/(tabs)/delivery');
+          } else {
+            // Fallback to generic tabs if userType is not set yet
+            router.replace('/(tabs)');
+          }
+        }, 100);
       }
     } catch (err) {
       console.error('Login error:', err);

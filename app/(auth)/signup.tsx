@@ -19,7 +19,7 @@ export default function SignUp() {
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState('');
   
-  const { signUp } = useAuth();
+  const { signUp, userType } = useAuth();
 
   const {
     control,
@@ -63,7 +63,25 @@ export default function SignUp() {
         Alert.alert(
           'Success',
           'Account created successfully! Please check your email to verify your account.',
-          [{ text: 'OK', onPress: () => router.replace('/(tabs)') }]
+          [{ 
+            text: 'OK', 
+            onPress: () => {
+              // Wait a moment for the auth context to update with userType
+              setTimeout(() => {
+                // Redirect to the specific role dashboard
+                if (data.userType === 'customer') {
+                  router.replace('/(tabs)/customer');
+                } else if (data.userType === 'restaurant') {
+                  router.replace('/(tabs)/restaurant');
+                } else if (data.userType === 'delivery') {
+                  router.replace('/(tabs)/delivery');
+                } else {
+                  // Fallback to generic tabs
+                  router.replace('/(tabs)');
+                }
+              }, 100);
+            }
+          }]
         );
       }
     } catch (err) {
