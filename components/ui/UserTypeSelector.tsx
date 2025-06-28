@@ -1,6 +1,14 @@
 import React, { useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { User, Store, Truck } from 'lucide-react-native';
+import Animated, { 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withTiming, 
+  withSpring,
+  withSequence,
+  runOnJS
+} from 'react-native-reanimated';
 
 interface UserTypeOption {
   id: 'customer' | 'restaurant' | 'delivery';
@@ -44,15 +52,15 @@ const userTypeOptions: UserTypeOption[] = [
 ];
 
 export default function UserTypeSelector({ selectedType, onSelect }: UserTypeSelectorProps) {
-  // Animation values for each card
+  // Shared values for each card
   const animationValues = useRef(
     userTypeOptions.reduce((acc, option) => {
       acc[option.id] = {
-        scale: new Animated.Value(1),
-        elevation: new Animated.Value(0),
-        borderWidth: new Animated.Value(2),
-        iconScale: new Animated.Value(1),
-        glowOpacity: new Animated.Value(0),
+        scale: useSharedValue(1),
+        elevation: useSharedValue(0),
+        borderOpacity: useSharedValue(0),
+        iconScale: useSharedValue(1),
+        glowOpacity: useSharedValue(0),
       };
       return acc;
     }, {} as Record<string, any>)
@@ -76,100 +84,42 @@ export default function UserTypeSelector({ selectedType, onSelect }: UserTypeSel
     
     if (isSelected) {
       // Selection animation sequence
-      Animated.sequence([
-        // Quick scale down
-        Animated.timing(animations.scale, {
-          toValue: 0.95,
-          duration: 100,
-          useNativeDriver: true,
-        }),
-        // Scale up with bounce
-        Animated.spring(animations.scale, {
-          toValue: 1.02,
-          tension: 300,
-          friction: 10,
-          useNativeDriver: true,
-        }),
-        // Settle to final scale
-        Animated.timing(animations.scale, {
-          toValue: 1,
-          duration: 150,
-          useNativeDriver: true,
-        }),
-      ]).start();
+      animations.scale.value = withSequence(
+        withTiming(0.95, { duration: 100 }),
+        withSpring(1.02, { damping: 15, stiffness: 300 }),
+        withTiming(1, { duration: 150 })
+      );
 
       // Icon pulse animation
-      Animated.sequence([
-        Animated.timing(animations.iconScale, {
-          toValue: 1.2,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(animations.iconScale, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start();
+      animations.iconScale.value = withSequence(
+        withTiming(1.2, { duration: 200 }),
+        withTiming(1, { duration: 200 })
+      );
 
       // Glow effect
-      Animated.sequence([
-        Animated.timing(animations.glowOpacity, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: false,
-        }),
-        Animated.timing(animations.glowOpacity, {
-          toValue: 0,
-          duration: 500,
-          useNativeDriver: false,
-        }),
-      ]).start();
+      animations.glowOpacity.value = withSequence(
+        withTiming(1, { duration: 300 }),
+        withTiming(0, { duration: 500 })
+      );
 
       // Elevation animation (Android shadow)
-      Animated.timing(animations.elevation, {
-        toValue: 8,
-        duration: 200,
-        useNativeDriver: false,
-      }).start();
+      animations.elevation.value = withTiming(8, { duration: 200 });
 
-      // Border animation
-      Animated.timing(animations.borderWidth, {
-        toValue: 3,
-        duration: 200,
-        useNativeDriver: false,
-      }).start();
+      // Border animation (using opacity instead of borderWidth)
+      animations.borderOpacity.value = withTiming(1, { duration: 200 });
     } else {
       // Deselection animation
-      Animated.parallel([
-        Animated.timing(animations.scale, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(animations.elevation, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: false,
-        }),
-        Animated.timing(animations.borderWidth, {
-          toValue: 2,
-          duration: 200,
-          useNativeDriver: false,
-        }),
-        Animated.timing(animations.iconScale, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start();
+      animations.scale.value = withTiming(1, { duration: 200 });
+      animations.elevation.value = withTiming(0, { duration: 200 });
+      animations.borderOpacity.value = withTiming(0, { duration: 200 });
+      animations.iconScale.value = withTiming(1, { duration: 200 });
     }
   };
 
   // Handle card press
   const handleCardPress = (option: UserTypeOption) => {
     // Trigger haptic feedback
-    triggerHapticFeedback();
+    runOnJS(triggerHapticFeedback)();
     
     // Animate all cards
     userTypeOptions.forEach((opt) => {
@@ -177,7 +127,7 @@ export default function UserTypeSelector({ selectedType, onSelect }: UserTypeSel
     });
     
     // Call the selection handler
-    onSelect(option.id);
+    runOnJS(onSelect)(option.id);
   };
 
   // Initialize animations when selectedType changes
@@ -194,6 +144,23 @@ export default function UserTypeSelector({ selectedType, onSelect }: UserTypeSel
         const isSelected = selectedType === option.id;
         const animations = animationValues[option.id];
 
+        const animatedCardStyle = useAnimatedStyle(() => ({
+          transform: [{ scale: animations.scale.value }],
+          elevation: animations.elevation.value,
+        }));
+
+        const animatedBorderStyle = useAnimatedStyle(() => ({
+          opacity: animations.borderOpacity.value,
+        }));
+
+        const animatedIconStyle = useAnimatedStyle(() => ({
+          transform: [{ scale: animations.iconScale.value }],
+        }));
+
+        const animatedGlowStyle = useAnimatedStyle(() => ({
+          opacity: animations.glowOpacity.value,
+        }));
+
         return (
           <TouchableOpacity
             key={option.id}
@@ -203,21 +170,29 @@ export default function UserTypeSelector({ selectedType, onSelect }: UserTypeSel
             <Animated.View
               style={[
                 styles.card,
+                animatedCardStyle,
                 {
-                  transform: [{ scale: animations.scale }],
-                  elevation: animations.elevation,
-                  borderWidth: animations.borderWidth,
-                  borderColor: isSelected ? option.color : '#E5E7EB',
                   backgroundColor: isSelected ? `${option.color}08` : '#FFFFFF',
                 },
               ]}
             >
+              {/* Animated border overlay */}
+              <Animated.View
+                style={[
+                  styles.borderOverlay,
+                  animatedBorderStyle,
+                  {
+                    borderColor: option.color,
+                  },
+                ]}
+              />
+
               {/* Glow effect overlay */}
               <Animated.View
                 style={[
                   styles.glowOverlay,
+                  animatedGlowStyle,
                   {
-                    opacity: animations.glowOpacity,
                     backgroundColor: `${option.color}20`,
                   },
                 ]}
@@ -227,9 +202,9 @@ export default function UserTypeSelector({ selectedType, onSelect }: UserTypeSel
                 <Animated.View
                   style={[
                     styles.iconContainer,
+                    animatedIconStyle,
                     {
                       backgroundColor: isSelected ? option.color : '#F3F4F6',
-                      transform: [{ scale: animations.iconScale }],
                     },
                   ]}
                 >
@@ -272,17 +247,15 @@ export default function UserTypeSelector({ selectedType, onSelect }: UserTypeSel
               </View>
 
               {/* Ripple effect for visual feedback */}
-              {isSelected && (
-                <Animated.View
-                  style={[
-                    styles.rippleEffect,
-                    {
-                      opacity: animations.glowOpacity,
-                      backgroundColor: `${option.color}15`,
-                    },
-                  ]}
-                />
-              )}
+              <Animated.View
+                style={[
+                  styles.rippleEffect,
+                  animatedGlowStyle,
+                  {
+                    backgroundColor: `${option.color}15`,
+                  },
+                ]}
+              />
             </Animated.View>
           </TouchableOpacity>
         );
@@ -305,6 +278,16 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     position: 'relative',
     overflow: 'hidden',
+  },
+  borderOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 16,
+    borderWidth: 3,
+    borderColor: 'transparent',
   },
   glowOverlay: {
     position: 'absolute',
