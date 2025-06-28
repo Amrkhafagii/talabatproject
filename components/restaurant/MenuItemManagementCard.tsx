@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
-import { Edit, Trash2, Eye, EyeOff, Star, Clock } from 'lucide-react-native';
+import { CreditCard as Edit, Trash2, Eye, EyeOff, Star, Clock } from 'lucide-react-native';
 import Card from '../ui/Card';
 
 interface MenuItemManagement {
