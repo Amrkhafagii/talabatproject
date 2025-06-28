@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/ui/Header';
 import Button from '@/components/ui/Button';
 import FormField from '@/components/ui/FormField';
+import FormToggle from '@/components/ui/FormToggle';
 import { loginSchema, LoginFormData } from '@/utils/validation/schemas';
 
 export default function Login() {
@@ -30,6 +31,7 @@ export default function Login() {
     defaultValues: {
       email: '',
       password: '',
+      rememberMe: true, // Default to true for better UX
     },
   });
 
@@ -54,6 +56,8 @@ export default function Login() {
           setFormError(error.message || 'An error occurred during sign in. Please try again.');
         }
       } else {
+        // Note: Supabase automatically handles session persistence
+        // The "Remember Me" checkbox is primarily for user reassurance
         router.replace('/(tabs)');
       }
     } catch (err) {
@@ -121,6 +125,15 @@ export default function Login() {
             }
           />
 
+          {/* Remember Me Toggle */}
+          <FormToggle
+            control={control}
+            name="rememberMe"
+            label="Remember me"
+            description="Keep me signed in on this device"
+            style={styles.rememberMeContainer}
+          />
+
           <TouchableOpacity 
             style={styles.forgotPassword}
             onPress={() => router.push('/forgot-password')}
@@ -141,6 +154,13 @@ export default function Login() {
           <TouchableOpacity onPress={() => router.push('/signup')}>
             <Text style={styles.signUpLink}>Sign Up</Text>
           </TouchableOpacity>
+        </View>
+
+        {/* Session Info */}
+        <View style={styles.sessionInfo}>
+          <Text style={styles.sessionInfoText}>
+            🔒 Your session will be securely maintained across app restarts for your convenience.
+          </Text>
         </View>
       </View>
     </SafeAreaView>
@@ -193,6 +213,10 @@ const styles = StyleSheet.create({
   inputContainer: {
     marginBottom: 16,
   },
+  rememberMeContainer: {
+    marginBottom: 16,
+    marginTop: -4,
+  },
   forgotPassword: {
     alignSelf: 'flex-end',
     marginBottom: 24,
@@ -210,6 +234,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 24,
   },
   signUpText: {
     fontSize: 16,
@@ -220,5 +245,21 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
     color: '#FF6B35',
+  },
+  sessionInfo: {
+    backgroundColor: '#F0F9FF',
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 'auto',
+    marginBottom: 20,
+  },
+  sessionInfoText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#0369A1',
+    textAlign: 'center',
+    lineHeight: 16,
   },
 });
