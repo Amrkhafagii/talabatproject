@@ -8,6 +8,11 @@ export default function CustomerLayout() {
       <Stack.Screen name="cart" />
       <Stack.Screen name="orders" />
       <Stack.Screen name="profile" />
+      <Stack.Screen name="edit-profile" />
+      <Stack.Screen name="addresses" />
+      <Stack.Screen name="add-address" />
+      <Stack.Screen name="edit-address" />
+      <Stack.Screen name="select-address" />
       <Stack.Screen 
         name="filters" 
         options={{ 

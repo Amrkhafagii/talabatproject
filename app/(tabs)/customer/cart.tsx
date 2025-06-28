@@ -1,32 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Plus, Minus, CreditCard, MapPin } from 'lucide-react-native';
+import { ArrowLeft, Plus, Minus, CreditCard, MapPin, ChevronDown } from 'lucide-react-native';
 import { router } from 'expo-router';
 
 import { useCart } from '@/hooks/useCart';
 import { useAuth } from '@/contexts/AuthContext';
-import { getMenuItemById, createOrder } from '@/utils/database';
-import { MenuItem } from '@/types/database';
+import { getMenuItemById, createOrder, getUserAddresses } from '@/utils/database';
+import { MenuItem, UserAddress } from '@/types/database';
+import CartItemCard from '@/components/customer/CartItemCard';
 
 export default function Cart() {
   const { cart, updateQuantity, clearCart, getTotalItems } = useCart();
   const { user } = useAuth();
   const [cartItems, setCartItems] = useState<(MenuItem & { quantity: number })[]>([]);
+  const [addresses, setAddresses] = useState<UserAddress[]>([]);
+  const [selectedAddress, setSelectedAddress] = useState<UserAddress | null>(null);
   const [loading, setLoading] = useState(true);
   const [placing, setPlacing] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState('card');
-  const [selectedAddress, setSelectedAddress] = useState('home');
 
   useEffect(() => {
-    loadCartItems();
-  }, [cart]);
+    loadCartData();
+  }, [cart, user]);
 
-  const loadCartItems = async () => {
+  const loadCartData = async () => {
     try {
       setLoading(true);
-      const items = [];
       
+      // Load cart items
+      const items = [];
       for (const [itemId, quantity] of Object.entries(cart)) {
         if (quantity > 0) {
           const menuItem = await getMenuItemById(itemId);
@@ -35,10 +38,19 @@ export default function Cart() {
           }
         }
       }
-      
       setCartItems(items);
+
+      // Load user addresses if user is logged in
+      if (user) {
+        const userAddresses = await getUserAddresses(user.id);
+        setAddresses(userAddresses);
+        
+        // Set default address or first address
+        const defaultAddress = userAddresses.find(addr => addr.is_default) || userAddresses[0];
+        setSelectedAddress(defaultAddress || null);
+      }
     } catch (error) {
-      console.error('Error loading cart items:', error);
+      console.error('Error loading cart data:', error);
     } finally {
       setLoading(false);
     }
@@ -58,6 +70,22 @@ export default function Cart() {
   const tax = getSubtotal() * 0.08;
   const total = getSubtotal() + deliveryFee + tax;
 
+  const handleSelectAddress = () => {
+    if (addresses.length === 0) {
+      Alert.alert(
+        'No Addresses',
+        'You need to add a delivery address first.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Add Address', onPress: () => router.push('/customer/add-address') }
+        ]
+      );
+    } else {
+      // Show address selection modal or navigate to address selection screen
+      router.push('/customer/select-address');
+    }
+  };
+
   const handlePlaceOrder = async () => {
     if (!user) {
       Alert.alert('Error', 'Please sign in to place an order');
@@ -69,9 +97,14 @@ export default function Cart() {
       return;
     }
 
+    if (!selectedAddress) {
+      Alert.alert('Error', 'Please select a delivery address');
+      return;
+    }
+
     // Get restaurant ID from the first item (assuming all items are from the same restaurant)
     const restaurantId = cartItems[0].restaurant_id;
-    const deliveryAddress = '123 Main Street, Downtown'; // This should come from user's saved addresses
+    const deliveryAddressString = `${selectedAddress.address_line_1}${selectedAddress.address_line_2 ? `, ${selectedAddress.address_line_2}` : ''}, ${selectedAddress.city}, ${selectedAddress.state} ${selectedAddress.postal_code}`;
 
     setPlacing(true);
 
@@ -79,15 +112,23 @@ export default function Cart() {
       const orderItems = cartItems.map(item => ({
         menuItemId: item.id,
         quantity: item.quantity,
-        price: item.price
+        unitPrice: item.price,
+        specialInstructions: undefined
       }));
 
       const order = await createOrder(
         user.id,
         restaurantId,
+        selectedAddress.id,
+        deliveryAddressString,
+        orderItems,
+        getSubtotal(),
+        deliveryFee,
+        tax,
+        0, // tip amount
         total,
-        deliveryAddress,
-        orderItems
+        selectedPayment,
+        selectedAddress.delivery_instructions
       );
 
       if (order) {
@@ -174,14 +215,27 @@ export default function Cart() {
         {/* Delivery Address */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Delivery Address</Text>
-          <TouchableOpacity style={styles.addressCard}>
-            <MapPin size={20} color="#FF6B35" />
-            <View style={styles.addressInfo}>
-              <Text style={styles.addressType}>Home</Text>
-              <Text style={styles.addressText}>123 Main Street, Downtown</Text>
-            </View>
-            <Text style={styles.changeText}>Change</Text>
-          </TouchableOpacity>
+          {selectedAddress ? (
+            <TouchableOpacity style={styles.addressCard} onPress={handleSelectAddress}>
+              <MapPin size={20} color="#FF6B35" />
+              <View style={styles.addressInfo}>
+                <Text style={styles.addressType}>{selectedAddress.label}</Text>
+                <Text style={styles.addressText}>
+                  {selectedAddress.address_line_1}
+                  {selectedAddress.address_line_2 && `, ${selectedAddress.address_line_2}`}
+                </Text>
+                <Text style={styles.addressText}>
+                  {selectedAddress.city}, {selectedAddress.state} {selectedAddress.postal_code}
+                </Text>
+              </View>
+              <ChevronDown size={20} color="#6B7280" />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={styles.addAddressCard} onPress={handleSelectAddress}>
+              <MapPin size={20} color="#6B7280" />
+              <Text style={styles.addAddressText}>Add delivery address</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Cart Items */}
@@ -189,27 +243,16 @@ export default function Cart() {
           <Text style={styles.sectionTitle}>Order Items</Text>
           <View style={styles.itemsContainer}>
             {cartItems.map((item) => (
-              <View key={item.id} style={styles.cartItem}>
-                <View style={styles.itemInfo}>
-                  <Text style={styles.itemName}>{item.name}</Text>
-                  <Text style={styles.itemPrice}>${item.price.toFixed(2)}</Text>
-                </View>
-                <View style={styles.quantityControls}>
-                  <TouchableOpacity 
-                    style={styles.quantityButton}
-                    onPress={() => updateItemQuantity(item.id, -1)}
-                  >
-                    <Minus size={16} color="#FF6B35" />
-                  </TouchableOpacity>
-                  <Text style={styles.quantityText}>{item.quantity}</Text>
-                  <TouchableOpacity 
-                    style={styles.quantityButton}
-                    onPress={() => updateItemQuantity(item.id, 1)}
-                  >
-                    <Plus size={16} color="#FF6B35" />
-                  </TouchableOpacity>
-                </View>
-              </View>
+              <CartItemCard
+                key={item.id}
+                item={{
+                  id: item.id,
+                  name: item.name,
+                  price: item.price,
+                  quantity: item.quantity
+                }}
+                onUpdateQuantity={updateItemQuantity}
+              />
             ))}
           </View>
         </View>
@@ -256,9 +299,9 @@ export default function Cart() {
       {/* Place Order Button */}
       <View style={styles.bottomContainer}>
         <TouchableOpacity 
-          style={[styles.placeOrderButton, placing && styles.disabledButton]} 
+          style={[styles.placeOrderButton, (placing || !selectedAddress) && styles.disabledButton]} 
           onPress={handlePlaceOrder}
-          disabled={placing}
+          disabled={placing || !selectedAddress}
         >
           <Text style={styles.placeOrderText}>
             {placing ? 'Placing Order...' : 'Place Order'}
@@ -376,61 +419,30 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     fontFamily: 'Inter-Regular',
     marginTop: 2,
+    lineHeight: 18,
   },
-  changeText: {
-    fontSize: 14,
-    color: '#FF6B35',
+  addAddressCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    borderStyle: 'dashed',
+  },
+  addAddressText: {
+    fontSize: 16,
+    color: '#6B7280',
     fontFamily: 'Inter-Medium',
+    marginLeft: 8,
   },
   itemsContainer: {
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E5E7EB',
     overflow: 'hidden',
-  },
-  cartItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  itemInfo: {
-    flex: 1,
-  },
-  itemName: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  itemPrice: {
-    fontSize: 14,
-    color: '#6B7280',
-    fontFamily: 'Inter-Regular',
-  },
-  quantityControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-    borderRadius: 8,
-    paddingHorizontal: 4,
-  },
-  quantityButton: {
-    width: 32,
-    height: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  quantityText: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: '#111827',
-    minWidth: 30,
-    textAlign: 'center',
   },
   paymentOptions: {
     gap: 12,
