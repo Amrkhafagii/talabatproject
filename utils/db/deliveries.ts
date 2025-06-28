@@ -2,7 +2,7 @@ import { supabase } from '../supabase';
 import { Delivery } from '@/types/database';
 import { updateOrderStatus } from './orders';
 
-export async function getAvailableDeliveries(): Promise<Delivery[]> {
+async function getAvailableDeliveries(): Promise<Delivery[]> {
   const { data, error } = await supabase
     .from('deliveries')
     .select(`
@@ -28,7 +28,7 @@ export async function getAvailableDeliveries(): Promise<Delivery[]> {
   return data || [];
 }
 
-export async function getDriverDeliveries(driverId: string): Promise<Delivery[]> {
+async function getDriverDeliveries(driverId: string): Promise<Delivery[]> {
   const { data, error } = await supabase
     .from('deliveries')
     .select(`
@@ -112,7 +112,7 @@ export async function getDriverDeliveryHistory(
   return data || [];
 }
 
-export async function acceptDelivery(deliveryId: string, driverId: string): Promise<boolean> {
+async function acceptDelivery(deliveryId: string, driverId: string): Promise<boolean> {
   const { error } = await supabase
     .from('deliveries')
     .update({
@@ -131,7 +131,7 @@ export async function acceptDelivery(deliveryId: string, driverId: string): Prom
   return true;
 }
 
-export async function updateDeliveryStatus(deliveryId: string, status: string): Promise<boolean> {
+async function updateDeliveryStatus(deliveryId: string, status: string): Promise<boolean> {
   const updateData: any = { status };
   
   switch (status) {

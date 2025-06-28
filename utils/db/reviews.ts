@@ -1,7 +1,7 @@
 import { supabase } from '../supabase';
 import { Review } from '@/types/database';
 
-export async function createReview(review: Omit<Review, 'id' | 'created_at'>): Promise<Review | null> {
+async function createReview(review: Omit<Review, 'id' | 'created_at'>): Promise<Review | null> {
   const { data, error } = await supabase
     .from('reviews')
     .insert(review)
@@ -16,7 +16,7 @@ export async function createReview(review: Omit<Review, 'id' | 'created_at'>): P
   return data;
 }
 
-export async function getRestaurantReviews(restaurantId: string, limit: number = 10): Promise<Review[]> {
+async function getRestaurantReviews(restaurantId: string, limit: number = 10): Promise<Review[]> {
   const { data, error } = await supabase
     .from('reviews')
     .select(`
@@ -36,7 +36,7 @@ export async function getRestaurantReviews(restaurantId: string, limit: number =
   return data || [];
 }
 
-export async function getDriverReviews(driverId: string, limit: number = 10): Promise<Review[]> {
+async function getDriverReviews(driverId: string, limit: number = 10): Promise<Review[]> {
   const { data, error } = await supabase
     .from('reviews')
     .select(`

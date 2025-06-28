@@ -17,15 +17,15 @@ export function formatCurrency(amount: number): string {
   return `$${amount.toFixed(2)}`;
 }
 
-export function formatDistance(distance: string): string {
+function formatDistance(distance: string): string {
   return distance;
 }
 
-export function formatTime(time: string): string {
+function formatTime(time: string): string {
   return time;
 }
 
-export function formatPhoneNumber(phone: string): string {
+function formatPhoneNumber(phone: string): string {
   // Basic phone number formatting
   const cleaned = phone.replace(/\D/g, '');
   const match = cleaned.match(/^(\d{3})(\d{3})(\d{4})$/);

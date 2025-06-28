@@ -1,7 +1,7 @@
 import { supabase } from '../supabase';
 import { Restaurant, MenuItem, RestaurantFilters } from '@/types/database';
 
-export async function searchRestaurants(query: string, filters?: RestaurantFilters): Promise<Restaurant[]> {
+async function searchRestaurants(query: string, filters?: RestaurantFilters): Promise<Restaurant[]> {
   let supabaseQuery = supabase
     .from('restaurants')
     .select(`
@@ -40,7 +40,7 @@ export async function searchRestaurants(query: string, filters?: RestaurantFilte
   return data || [];
 }
 
-export async function searchMenuItems(query: string, restaurantId?: string): Promise<MenuItem[]> {
+async function searchMenuItems(query: string, restaurantId?: string): Promise<MenuItem[]> {
   let supabaseQuery = supabase
     .from('menu_items')
     .select(`
@@ -66,7 +66,7 @@ export async function searchMenuItems(query: string, restaurantId?: string): Pro
   return data || [];
 }
 
-export async function getFeaturedRestaurants(limit: number = 6): Promise<Restaurant[]> {
+async function getFeaturedRestaurants(limit: number = 6): Promise<Restaurant[]> {
   const { data, error } = await supabase
     .from('restaurants')
     .select('*')
@@ -83,7 +83,7 @@ export async function getFeaturedRestaurants(limit: number = 6): Promise<Restaur
   return data || [];
 }
 
-export async function getPopularMenuItems(limit: number = 10): Promise<MenuItem[]> {
+async function getPopularMenuItems(limit: number = 10): Promise<MenuItem[]> {
   const { data, error } = await supabase
     .from('menu_items')
     .select(`

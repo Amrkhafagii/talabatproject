@@ -1,7 +1,7 @@
 import { supabase } from '../supabase';
 import { User } from '@/types/database';
 
-export async function createUserProfile(
+async function createUserProfile(
   userId: string,
   email: string,
   fullName?: string,

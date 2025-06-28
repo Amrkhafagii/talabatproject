@@ -7,11 +7,11 @@ export function getOrderItems(order: Order): string[] {
   );
 }
 
-export function calculateOrderTotal(items: { price: number; quantity: number }[]): number {
+function calculateOrderTotal(items: { price: number; quantity: number }[]): number {
   return items.reduce((total, item) => total + (item.price * item.quantity), 0);
 }
 
-export function getOrderStatusColor(status: string): string {
+function getOrderStatusColor(status: string): string {
   switch (status) {
     case 'pending':
     case 'preparing':
@@ -29,7 +29,7 @@ export function getOrderStatusColor(status: string): string {
   }
 }
 
-export function getOrderStatusLabel(status: string): string {
+function getOrderStatusLabel(status: string): string {
   switch (status) {
     case 'pending':
       return 'Pending';

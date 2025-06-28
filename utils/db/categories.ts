@@ -15,7 +15,7 @@ export async function getCategories(): Promise<Category[]> {
   return data || [];
 }
 
-export async function getCategoryById(id: string): Promise<Category | null> {
+async function getCategoryById(id: string): Promise<Category | null> {
   const { data, error } = await supabase
     .from('categories')
     .select('*')

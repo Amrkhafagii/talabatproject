@@ -63,7 +63,7 @@ export const resetPasswordSchema = z.object({
 });
 
 // Profile schemas
-export const profileSchema = z.object({
+const profileSchema = z.object({
   fullName: z
     .string()
     .min(1, 'Full name is required')
@@ -111,7 +111,7 @@ export const addressSchema = z.object({
 });
 
 // Restaurant schemas
-export const menuItemSchema = z.object({
+const menuItemSchema = z.object({
   name: z
     .string()
     .min(1, 'Item name is required')
@@ -140,7 +140,7 @@ export const menuItemSchema = z.object({
 });
 
 // Delivery driver schemas
-export const driverProfileSchema = z.object({
+const driverProfileSchema = z.object({
   licenseNumber: z
     .string()
     .min(1, 'License number is required')
@@ -172,7 +172,7 @@ export const driverProfileSchema = z.object({
 });
 
 // Order schemas
-export const orderSchema = z.object({
+const orderSchema = z.object({
   deliveryAddress: z
     .string()
     .min(1, 'Delivery address is required'),
@@ -186,7 +186,7 @@ export const orderSchema = z.object({
 });
 
 // Contact/Support schemas
-export const contactSchema = z.object({
+const contactSchema = z.object({
   name: z
     .string()
     .min(1, 'Name is required')
@@ -210,9 +210,9 @@ export type LoginFormData = z.infer<typeof loginSchema>;
 export type SignupFormData = z.infer<typeof signupSchema>;
 export type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
-export type ProfileFormData = z.infer<typeof profileSchema>;
+type ProfileFormData = z.infer<typeof profileSchema>;
 export type AddressFormData = z.infer<typeof addressSchema>;
-export type MenuItemFormData = z.infer<typeof menuItemSchema>;
-export type DriverProfileFormData = z.infer<typeof driverProfileSchema>;
-export type OrderFormData = z.infer<typeof orderSchema>;
-export type ContactFormData = z.infer<typeof contactSchema>;
+type MenuItemFormData = z.infer<typeof menuItemSchema>;
+type DriverProfileFormData = z.infer<typeof driverProfileSchema>;
+type OrderFormData = z.infer<typeof orderSchema>;
+type ContactFormData = z.infer<typeof contactSchema>;

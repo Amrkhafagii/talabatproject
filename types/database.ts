@@ -43,7 +43,7 @@ export interface Restaurant {
   restaurant_hours?: RestaurantHours[];
 }
 
-export interface RestaurantHours {
+interface RestaurantHours {
   id: string;
   restaurant_id: string;
   day_of_week: number; // 0 = Sunday, 6 = Saturday
@@ -125,7 +125,7 @@ export interface Order {
   delivery_address_info?: UserAddress;
 }
 
-export interface OrderItem {
+interface OrderItem {
   id: string;
   order_id: string;
   menu_item_id: string;
@@ -231,7 +231,7 @@ export interface DeliveryStats {
   onlineHours: number;
 }
 
-export interface CustomerStats {
+interface CustomerStats {
   totalOrders: number;
   totalSpent: number;
   favoriteRestaurants: Restaurant[];
@@ -240,14 +240,14 @@ export interface CustomerStats {
 }
 
 // API Response Types
-export interface ApiResponse<T> {
+interface ApiResponse<T> {
   data?: T;
   error?: string;
   message?: string;
   success: boolean;
 }
 
-export interface PaginatedResponse<T> {
+interface PaginatedResponse<T> {
   data: T[];
   total: number;
   page: number;
