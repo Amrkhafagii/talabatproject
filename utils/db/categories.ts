@@ -5,7 +5,8 @@ export async function getCategories(): Promise<Category[]> {
   const { data, error } = await supabase
     .from('categories')
     .select('*')
-    .order('created_at');
+    .eq('is_active', true)
+    .order('sort_order');
 
   if (error) {
     console.error('Error fetching categories:', error);
@@ -15,7 +16,7 @@ export async function getCategories(): Promise<Category[]> {
   return data || [];
 }
 
-async function getCategoryById(id: string): Promise<Category | null> {
+export async function getCategoryById(id: string): Promise<Category | null> {
   const { data, error } = await supabase
     .from('categories')
     .select('*')

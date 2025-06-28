@@ -18,18 +18,17 @@ export async function getDriverByUserId(userId: string): Promise<DeliveryDriver 
 
 export async function createDriverProfile(
   userId: string,
-  name: string,
-  phone: string,
+  licenseNumber: string,
   vehicleType: 'bicycle' | 'motorcycle' | 'car' | 'scooter' = 'car'
 ): Promise<DeliveryDriver | null> {
   const { data, error } = await supabase
     .from('delivery_drivers')
     .insert({
       user_id: userId,
-      name,
-      phone,
+      license_number: licenseNumber,
       vehicle_type: vehicleType,
-      is_online: false
+      is_online: false,
+      is_available: true
     })
     .select()
     .single();
@@ -60,12 +59,15 @@ export async function updateDriverOnlineStatus(driverId: string, isOnline: boole
 
 export async function updateDriverLocation(
   driverId: string, 
-  currentLocation: string
+  latitude: number,
+  longitude: number
 ): Promise<boolean> {
   const { error } = await supabase
     .from('delivery_drivers')
     .update({
-      current_location: currentLocation
+      current_latitude: latitude,
+      current_longitude: longitude,
+      last_location_update: new Date().toISOString()
     })
     .eq('id', driverId);
 

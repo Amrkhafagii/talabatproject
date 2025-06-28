@@ -4,7 +4,8 @@ import { Restaurant, RestaurantFilters } from '@/types/database';
 export async function getRestaurants(filters?: RestaurantFilters): Promise<Restaurant[]> {
   let query = supabase
     .from('restaurants')
-    .select('*');
+    .select('*')
+    .eq('is_active', true);
 
   // Apply filters
   if (filters?.cuisine && filters.cuisine.length > 0) {
@@ -20,7 +21,7 @@ export async function getRestaurants(filters?: RestaurantFilters): Promise<Resta
   }
 
   if (filters?.promoted !== undefined) {
-    query = query.eq('promoted', filters.promoted);
+    query = query.eq('is_promoted', filters.promoted);
   }
 
   if (filters?.search) {
@@ -28,7 +29,7 @@ export async function getRestaurants(filters?: RestaurantFilters): Promise<Resta
   }
 
   // Order by promoted first, then by rating
-  query = query.order('promoted', { ascending: false })
+  query = query.order('is_promoted', { ascending: false })
               .order('rating', { ascending: false });
 
   const { data, error } = await query;
@@ -60,7 +61,7 @@ export async function getRestaurantByUserId(userId: string): Promise<Restaurant 
   const { data, error } = await supabase
     .from('restaurants')
     .select('*')
-    .eq('user_id', userId)
+    .eq('owner_id', userId)
     .single();
 
   if (error) {
@@ -71,7 +72,7 @@ export async function getRestaurantByUserId(userId: string): Promise<Restaurant 
   return data;
 }
 
-async function createRestaurant(restaurant: Omit<Restaurant, 'id' | 'created_at' | 'rating'>): Promise<Restaurant | null> {
+export async function createRestaurant(restaurant: Omit<Restaurant, 'id' | 'created_at' | 'rating'>): Promise<Restaurant | null> {
   const { data, error } = await supabase
     .from('restaurants')
     .insert(restaurant)
@@ -86,7 +87,7 @@ async function createRestaurant(restaurant: Omit<Restaurant, 'id' | 'created_at'
   return data;
 }
 
-async function updateRestaurant(restaurantId: string, updates: Partial<Restaurant>): Promise<boolean> {
+export async function updateRestaurant(restaurantId: string, updates: Partial<Restaurant>): Promise<boolean> {
   const { error } = await supabase
     .from('restaurants')
     .update(updates)

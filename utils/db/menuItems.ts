@@ -6,8 +6,7 @@ export async function getMenuItemsByRestaurant(restaurantId: string, filters?: M
     .from('menu_items')
     .select(`
       *,
-      restaurant:restaurants(*),
-      category_info:categories(*)
+      restaurant:restaurants(*)
     `)
     .eq('restaurant_id', restaurantId)
     .eq('is_available', true);
@@ -49,8 +48,7 @@ export async function getMenuItemById(id: string): Promise<MenuItem | null> {
     .from('menu_items')
     .select(`
       *,
-      restaurant:restaurants(*),
-      category_info:categories(*)
+      restaurant:restaurants(*)
     `)
     .eq('id', id)
     .single();
