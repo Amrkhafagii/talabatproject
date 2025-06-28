@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { MapPin, Navigation, Phone, CircleCheck as CheckCircle } from 'lucide-react-native';
+import { MapPin, Navigation, Phone, CircleCheck as CheckCircle, Package } from 'lucide-react-native';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 
@@ -23,6 +23,7 @@ interface DeliveryCardProps {
   onAccept?: () => void;
   onCall?: () => void;
   onNavigate?: () => void;
+  onPickup?: () => void;
   onComplete?: () => void;
 }
 
@@ -31,6 +32,7 @@ export default function DeliveryCard({
   onAccept,
   onCall,
   onNavigate,
+  onPickup,
   onComplete,
 }: DeliveryCardProps) {
   const isActive = order.status === 'active';
@@ -47,6 +49,19 @@ export default function DeliveryCard({
           <Text style={styles.paymentLabel}>Payment</Text>
         </View>
       </View>
+
+      {/* Order Items */}
+      {order.items.length > 0 && (
+        <View style={styles.itemsSection}>
+          <Text style={styles.itemsTitle}>Items:</Text>
+          {order.items.slice(0, 2).map((item, index) => (
+            <Text key={index} style={styles.itemText}>• {item}</Text>
+          ))}
+          {order.items.length > 2 && (
+            <Text style={styles.moreItems}>+{order.items.length - 2} more items</Text>
+          )}
+        </View>
+      )}
 
       <View style={styles.addressInfo}>
         <View style={styles.addressContainer}>
@@ -74,25 +89,31 @@ export default function DeliveryCard({
         <View style={styles.activeActions}>
           {onCall && (
             <TouchableOpacity style={styles.callButton} onPress={onCall}>
-              <Phone size={20} color="#FFFFFF" />
+              <Phone size={18} color="#FFFFFF" />
               <Text style={styles.callButtonText}>Call</Text>
             </TouchableOpacity>
           )}
           {onNavigate && (
             <TouchableOpacity style={styles.navigateButton} onPress={onNavigate}>
-              <Navigation size={20} color="#FFFFFF" />
+              <Navigation size={18} color="#FFFFFF" />
               <Text style={styles.navigateButtonText}>Navigate</Text>
+            </TouchableOpacity>
+          )}
+          {onPickup && (
+            <TouchableOpacity style={styles.pickupButton} onPress={onPickup}>
+              <Package size={18} color="#FFFFFF" />
+              <Text style={styles.pickupButtonText}>Picked Up</Text>
             </TouchableOpacity>
           )}
           {onComplete && (
             <TouchableOpacity style={styles.completeButton} onPress={onComplete}>
-              <CheckCircle size={20} color="#FFFFFF" />
+              <CheckCircle size={18} color="#FFFFFF" />
               <Text style={styles.completeButtonText}>Complete</Text>
             </TouchableOpacity>
           )}
         </View>
       ) : (
-        onAccept && <Button title="Accept Order" onPress={onAccept} />
+        onAccept && <Button title="Accept Delivery" onPress={onAccept} />
       )}
     </Card>
   );
@@ -110,7 +131,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   restaurantName: {
     fontSize: 16,
@@ -135,6 +156,30 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6B7280',
     fontFamily: 'Inter-Regular',
+  },
+  itemsSection: {
+    marginBottom: 12,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  itemsTitle: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  itemText: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
+    lineHeight: 18,
+  },
+  moreItems: {
+    fontSize: 13,
+    color: '#9CA3AF',
+    fontFamily: 'Inter-Regular',
+    fontStyle: 'italic',
   },
   addressInfo: {
     marginBottom: 12,
@@ -176,7 +221,7 @@ const styles = StyleSheet.create({
   },
   activeActions: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
   },
   callButton: {
     flex: 1,
@@ -184,11 +229,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#3B82F6',
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderRadius: 8,
   },
   callButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: 'Inter-SemiBold',
     color: '#FFFFFF',
     marginLeft: 4,
@@ -199,11 +244,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#10B981',
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderRadius: 8,
   },
   navigateButtonText: {
-    fontSize: 14,
+    fontSize: 13,
+    fontFamily: 'Inter-SemiBold',
+    color: '#FFFFFF',
+    marginLeft: 4,
+  },
+  pickupButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F59E0B',
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  pickupButtonText: {
+    fontSize: 13,
     fontFamily: 'Inter-SemiBold',
     color: '#FFFFFF',
     marginLeft: 4,
@@ -214,11 +274,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FF6B35',
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderRadius: 8,
   },
   completeButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: 'Inter-SemiBold',
     color: '#FFFFFF',
     marginLeft: 4,

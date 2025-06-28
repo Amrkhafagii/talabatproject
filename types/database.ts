@@ -57,3 +57,41 @@ export interface RestaurantStats {
   avgOrderValue: number;
   rating: number;
 }
+
+export interface DeliveryDriver {
+  id: string;
+  user_id: string;
+  name: string;
+  phone: string;
+  vehicle_type: string;
+  is_online: boolean;
+  current_location?: string;
+  rating: number;
+  total_deliveries: number;
+  created_at: string;
+}
+
+export interface Delivery {
+  id: string;
+  order_id: string;
+  driver_id?: string;
+  pickup_address: string;
+  delivery_address: string;
+  distance: string;
+  estimated_time: string;
+  delivery_fee: number;
+  status: 'available' | 'assigned' | 'picked_up' | 'delivered';
+  assigned_at?: string;
+  picked_up_at?: string;
+  delivered_at?: string;
+  created_at: string;
+  order?: Order;
+  driver?: DeliveryDriver;
+}
+
+export interface DeliveryStats {
+  todayEarnings: number;
+  completedDeliveries: number;
+  avgDeliveryTime: number;
+  rating: number;
+}

@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { Category, Restaurant, MenuItem, Order, OrderItem } from '@/types/database';
+import { Category, Restaurant, MenuItem, Order, OrderItem, Delivery, DeliveryDriver, DeliveryStats } from '@/types/database';
 
 // Categories
 export async function getCategories(): Promise<Category[]> {
@@ -244,4 +244,207 @@ export async function getRestaurantByUserId(userId: string): Promise<Restaurant 
   }
 
   return data;
+}
+
+// Delivery Driver Functions
+export async function getDriverByUserId(userId: string): Promise<DeliveryDriver | null> {
+  const { data, error } = await supabase
+    .from('delivery_drivers')
+    .select('*')
+    .eq('user_id', userId)
+    .single();
+
+  if (error) {
+    console.error('Error fetching driver:', error);
+    return null;
+  }
+
+  return data;
+}
+
+export async function createDriverProfile(
+  userId: string,
+  name: string,
+  phone: string,
+  vehicleType: string
+): Promise<DeliveryDriver | null> {
+  const { data, error } = await supabase
+    .from('delivery_drivers')
+    .insert({
+      user_id: userId,
+      name,
+      phone,
+      vehicle_type: vehicleType,
+      is_online: false
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating driver profile:', error);
+    return null;
+  }
+
+  return data;
+}
+
+export async function updateDriverOnlineStatus(driverId: string, isOnline: boolean): Promise<boolean> {
+  const { error } = await supabase
+    .from('delivery_drivers')
+    .update({ is_online: isOnline })
+    .eq('id', driverId);
+
+  if (error) {
+    console.error('Error updating driver online status:', error);
+    return false;
+  }
+
+  return true;
+}
+
+// Delivery Functions
+export async function getAvailableDeliveries(): Promise<Delivery[]> {
+  const { data, error } = await supabase
+    .from('deliveries')
+    .select(`
+      *,
+      order:orders(
+        *,
+        restaurant:restaurants(*),
+        order_items(
+          *,
+          menu_item:menu_items(*)
+        )
+      )
+    `)
+    .eq('status', 'available')
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching available deliveries:', error);
+    return [];
+  }
+
+  return data || [];
+}
+
+export async function getDriverDeliveries(driverId: string): Promise<Delivery[]> {
+  const { data, error } = await supabase
+    .from('deliveries')
+    .select(`
+      *,
+      order:orders(
+        *,
+        restaurant:restaurants(*),
+        order_items(
+          *,
+          menu_item:menu_items(*)
+        )
+      )
+    `)
+    .eq('driver_id', driverId)
+    .in('status', ['assigned', 'picked_up'])
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching driver deliveries:', error);
+    return [];
+  }
+
+  return data || [];
+}
+
+export async function acceptDelivery(deliveryId: string, driverId: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('deliveries')
+    .update({
+      driver_id: driverId,
+      status: 'assigned',
+      assigned_at: new Date().toISOString()
+    })
+    .eq('id', deliveryId)
+    .eq('status', 'available'); // Only accept if still available
+
+  if (error) {
+    console.error('Error accepting delivery:', error);
+    return false;
+  }
+
+  return true;
+}
+
+export async function updateDeliveryStatus(deliveryId: string, status: string): Promise<boolean> {
+  const updateData: any = { status };
+  
+  if (status === 'picked_up') {
+    updateData.picked_up_at = new Date().toISOString();
+  } else if (status === 'delivered') {
+    updateData.delivered_at = new Date().toISOString();
+  }
+
+  const { error } = await supabase
+    .from('deliveries')
+    .update(updateData)
+    .eq('id', deliveryId);
+
+  if (error) {
+    console.error('Error updating delivery status:', error);
+    return false;
+  }
+
+  // If delivery is completed, update the order status
+  if (status === 'delivered') {
+    const { data: delivery } = await supabase
+      .from('deliveries')
+      .select('order_id')
+      .eq('id', deliveryId)
+      .single();
+
+    if (delivery) {
+      await updateOrderStatus(delivery.order_id, 'delivered');
+    }
+  }
+
+  return true;
+}
+
+export async function getDriverStats(driverId: string): Promise<DeliveryStats> {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayISO = today.toISOString();
+
+  // Get today's completed deliveries
+  const { data: todayDeliveries, error: deliveriesError } = await supabase
+    .from('deliveries')
+    .select('delivery_fee, delivered_at')
+    .eq('driver_id', driverId)
+    .eq('status', 'delivered')
+    .gte('delivered_at', todayISO);
+
+  if (deliveriesError) {
+    console.error('Error fetching today deliveries:', deliveriesError);
+    return { todayEarnings: 0, completedDeliveries: 0, avgDeliveryTime: 0, rating: 0 };
+  }
+
+  // Get driver rating
+  const { data: driver, error: driverError } = await supabase
+    .from('delivery_drivers')
+    .select('rating')
+    .eq('id', driverId)
+    .single();
+
+  if (driverError) {
+    console.error('Error fetching driver rating:', driverError);
+  }
+
+  const earnings = todayDeliveries?.reduce((sum, delivery) => sum + delivery.delivery_fee, 0) || 0;
+  const deliveryCount = todayDeliveries?.length || 0;
+  const rating = driver?.rating || 0;
+
+  return {
+    todayEarnings: earnings,
+    completedDeliveries: deliveryCount,
+    avgDeliveryTime: 22, // This would be calculated from actual delivery times
+    rating
+  };
 }
