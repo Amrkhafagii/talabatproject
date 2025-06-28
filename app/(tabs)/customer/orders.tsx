@@ -1,27 +1,103 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
 import Header from '@/components/ui/Header';
 import OrderCard from '@/components/customer/OrderCard';
 import Button from '@/components/ui/Button';
-import { orders } from '@/constants/data';
+import { useAuth } from '@/contexts/AuthContext';
+import { getUserOrders } from '@/utils/database';
+import { Order } from '@/types/database';
 
 export default function Orders() {
   const [selectedTab, setSelectedTab] = useState('active');
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (user) {
+      loadOrders();
+    }
+  }, [user]);
+
+  const loadOrders = async () => {
+    if (!user) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+      const ordersData = await getUserOrders(user.id);
+      setOrders(ordersData);
+    } catch (err) {
+      console.error('Error loading orders:', err);
+      setError('Failed to load orders. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const activeOrders = orders.filter(order => order.status !== 'delivered');
   const pastOrders = orders.filter(order => order.status === 'delivered');
   const displayOrders = selectedTab === 'active' ? activeOrders : pastOrders;
 
-  const trackOrder = (orderId: number) => {
+  const trackOrder = (orderId: string) => {
     console.log('Track order:', orderId);
   };
 
-  const reorder = (orderId: number) => {
+  const reorder = (orderId: string) => {
     console.log('Reorder:', orderId);
   };
+
+  const formatOrderTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+    
+    if (diffInHours < 1) {
+      const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+      return `${diffInMinutes} min ago`;
+    } else if (diffInHours < 24) {
+      return `${diffInHours} hours ago`;
+    } else {
+      return date.toLocaleDateString();
+    }
+  };
+
+  const getOrderItems = (order: Order) => {
+    if (!order.order_items) return [];
+    return order.order_items.map(item => 
+      `${item.menu_item?.name} x${item.quantity}`
+    );
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <Header title="My Orders" showBackButton />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#FF6B35" />
+          <Text style={styles.loadingText}>Loading orders...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <Header title="My Orders" showBackButton />
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={loadOrders}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -52,7 +128,16 @@ export default function Orders() {
         {displayOrders.map((order) => (
           <OrderCard
             key={order.id}
-            order={order}
+            order={{
+              id: parseInt(order.id.slice(-8), 16), // Convert UUID to number for compatibility
+              restaurantName: order.restaurant?.name || 'Unknown Restaurant',
+              items: getOrderItems(order),
+              total: order.total,
+              status: order.status,
+              orderTime: formatOrderTime(order.created_at),
+              deliveryTime: order.status !== 'delivered' ? '25-30 min' : undefined,
+              address: order.delivery_address
+            }}
             onTrack={order.status !== 'delivered' ? () => trackOrder(order.id) : undefined}
             onReorder={order.status === 'delivered' ? () => reorder(order.id) : undefined}
           />
@@ -83,6 +168,42 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
+    marginTop: 12,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#EF4444',
+    fontFamily: 'Inter-Regular',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: '#FF6B35',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
   },
   tabContainer: {
     flexDirection: 'row',

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MapPin } from 'lucide-react-native';
 import { router } from 'expo-router';
@@ -8,18 +8,81 @@ import SearchBar from '@/components/ui/SearchBar';
 import CategoryCard from '@/components/customer/CategoryCard';
 import RestaurantCard from '@/components/customer/RestaurantCard';
 import { useFavorites } from '@/hooks/useFavorites';
-import { categories, restaurants } from '@/constants/data';
+import { getCategories, getRestaurants } from '@/utils/database';
+import { Category, Restaurant } from '@/types/database';
 
 export default function CustomerHome() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { toggleFavorite, isFavorite } = useFavorites();
 
-  const navigateToRestaurant = (restaurant: any) => {
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const [categoriesData, restaurantsData] = await Promise.all([
+        getCategories(),
+        getRestaurants()
+      ]);
+      
+      setCategories(categoriesData);
+      setRestaurants(restaurantsData);
+    } catch (err) {
+      console.error('Error loading data:', err);
+      setError('Failed to load data. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const navigateToRestaurant = (restaurant: Restaurant) => {
     router.push({
       pathname: '/customer/restaurant',
-      params: { restaurantId: restaurant.id, restaurantName: restaurant.name }
+      params: { 
+        restaurantId: restaurant.id, 
+        restaurantName: restaurant.name 
+      }
     });
   };
+
+  const filteredRestaurants = restaurants.filter(restaurant =>
+    restaurant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    restaurant.cuisine.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const promotedRestaurants = filteredRestaurants.filter(r => r.promoted);
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#FF6B35" />
+          <Text style={styles.loadingText}>Loading restaurants...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={loadData}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -50,35 +113,52 @@ export default function CustomerHome() {
         />
 
         {/* Categories */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Categories</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesContainer}>
-            {categories.map((category) => (
-              <CategoryCard
-                key={category.id}
-                category={category}
-                onPress={() => console.log('Category pressed:', category.name)}
-              />
-            ))}
-          </ScrollView>
-        </View>
+        {categories.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Categories</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesContainer}>
+              {categories.map((category) => (
+                <CategoryCard
+                  key={category.id}
+                  category={{
+                    id: parseInt(category.id.slice(-8), 16), // Convert UUID to number for compatibility
+                    name: category.name,
+                    emoji: category.emoji
+                  }}
+                  onPress={() => console.log('Category pressed:', category.name)}
+                />
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
         {/* Promoted Restaurants */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Promoted</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.promotedContainer}>
-            {restaurants.filter(r => r.promoted).map((restaurant) => (
-              <RestaurantCard
-                key={restaurant.id}
-                restaurant={restaurant}
-                variant="promoted"
-                onPress={() => navigateToRestaurant(restaurant)}
-                onFavoritePress={() => toggleFavorite(restaurant.id)}
-                isFavorite={isFavorite(restaurant.id)}
-              />
-            ))}
-          </ScrollView>
-        </View>
+        {promotedRestaurants.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Promoted</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.promotedContainer}>
+              {promotedRestaurants.map((restaurant) => (
+                <RestaurantCard
+                  key={restaurant.id}
+                  restaurant={{
+                    id: parseInt(restaurant.id.slice(-8), 16), // Convert UUID to number for compatibility
+                    name: restaurant.name,
+                    cuisine: restaurant.cuisine,
+                    rating: restaurant.rating,
+                    deliveryTime: restaurant.delivery_time,
+                    deliveryFee: restaurant.delivery_fee,
+                    image: restaurant.image,
+                    promoted: restaurant.promoted
+                  }}
+                  variant="promoted"
+                  onPress={() => navigateToRestaurant(restaurant)}
+                  onFavoritePress={() => toggleFavorite(parseInt(restaurant.id.slice(-8), 16))}
+                  isFavorite={isFavorite(parseInt(restaurant.id.slice(-8), 16))}
+                />
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
         {/* All Restaurants */}
         <View style={styles.section}>
@@ -89,16 +169,31 @@ export default function CustomerHome() {
             </TouchableOpacity>
           </View>
           <View style={styles.restaurantsContainer}>
-            {restaurants.map((restaurant) => (
+            {filteredRestaurants.map((restaurant) => (
               <RestaurantCard
                 key={restaurant.id}
-                restaurant={restaurant}
+                restaurant={{
+                  id: parseInt(restaurant.id.slice(-8), 16), // Convert UUID to number for compatibility
+                  name: restaurant.name,
+                  cuisine: restaurant.cuisine,
+                  rating: restaurant.rating,
+                  deliveryTime: restaurant.delivery_time,
+                  deliveryFee: restaurant.delivery_fee,
+                  image: restaurant.image,
+                  promoted: restaurant.promoted
+                }}
                 onPress={() => navigateToRestaurant(restaurant)}
-                onFavoritePress={() => toggleFavorite(restaurant.id)}
-                isFavorite={isFavorite(restaurant.id)}
+                onFavoritePress={() => toggleFavorite(parseInt(restaurant.id.slice(-8), 16))}
+                isFavorite={isFavorite(parseInt(restaurant.id.slice(-8), 16))}
               />
             ))}
           </View>
+          
+          {filteredRestaurants.length === 0 && (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyText}>No restaurants found</Text>
+            </View>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -109,6 +204,42 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
+    marginTop: 12,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#EF4444',
+    fontFamily: 'Inter-Regular',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: '#FF6B35',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
   },
   header: {
     flexDirection: 'row',
@@ -182,5 +313,14 @@ const styles = StyleSheet.create({
   },
   restaurantsContainer: {
     paddingHorizontal: 20,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 32,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
   },
 });

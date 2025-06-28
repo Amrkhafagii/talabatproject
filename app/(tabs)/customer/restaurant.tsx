@@ -1,28 +1,98 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Star, Clock, ShoppingCart } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import Header from '@/components/ui/Header';
 import MenuItem from '@/components/customer/MenuItem';
-import Button from '@/components/ui/Button';
 import { useCart } from '@/hooks/useCart';
-import { menuItems } from '@/constants/data';
+import { getRestaurantById, getMenuItemsByRestaurant } from '@/utils/database';
+import { Restaurant, MenuItem as MenuItemType } from '@/types/database';
 
 const menuCategories = ['Popular', 'Mains', 'Sides', 'Beverages', 'Desserts'];
 
 export default function RestaurantDetail() {
   const params = useLocalSearchParams();
   const [selectedCategory, setSelectedCategory] = useState('Popular');
+  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
+  const [menuItems, setMenuItems] = useState<MenuItemType[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { cart, addToCart, removeFromCart, getCartTotal, getTotalItems } = useCart();
 
+  const restaurantId = params.restaurantId as string;
+
+  useEffect(() => {
+    if (restaurantId) {
+      loadRestaurantData();
+    }
+  }, [restaurantId]);
+
+  const loadRestaurantData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const [restaurantData, menuData] = await Promise.all([
+        getRestaurantById(restaurantId),
+        getMenuItemsByRestaurant(restaurantId)
+      ]);
+
+      if (!restaurantData) {
+        setError('Restaurant not found');
+        return;
+      }
+
+      setRestaurant(restaurantData);
+      setMenuItems(menuData);
+    } catch (err) {
+      console.error('Error loading restaurant data:', err);
+      setError('Failed to load restaurant data. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filteredItems = menuItems.filter(item => item.category === selectedCategory);
+
+  const getCartTotalForItems = () => {
+    return Object.entries(cart).reduce((total, [itemId, quantity]) => {
+      const item = menuItems.find(item => item.id === itemId);
+      return total + (item ? item.price * quantity : 0);
+    }, 0);
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <Header title="Loading..." showBackButton />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#FF6B35" />
+          <Text style={styles.loadingText}>Loading restaurant...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error || !restaurant) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <Header title="Error" showBackButton />
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error || 'Restaurant not found'}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={loadRestaurantData}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
       <Header
-        title={params.restaurantName as string}
+        title={restaurant.name}
         showBackButton
       />
 
@@ -30,20 +100,20 @@ export default function RestaurantDetail() {
         {/* Restaurant Info */}
         <View style={styles.restaurantInfo}>
           <Image 
-            source={{ uri: 'https://images.pexels.com/photos/315755/pexels-photo-315755.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1' }} 
+            source={{ uri: restaurant.image }} 
             style={styles.restaurantImage} 
           />
           <View style={styles.restaurantDetails}>
-            <Text style={styles.restaurantName}>{params.restaurantName}</Text>
-            <Text style={styles.restaurantCuisine}>Italian • Pizza</Text>
+            <Text style={styles.restaurantName}>{restaurant.name}</Text>
+            <Text style={styles.restaurantCuisine}>{restaurant.cuisine}</Text>
             <View style={styles.restaurantMeta}>
               <View style={styles.rating}>
                 <Star size={16} color="#FFB800" fill="#FFB800" />
-                <Text style={styles.ratingText}>4.5</Text>
+                <Text style={styles.ratingText}>{restaurant.rating}</Text>
               </View>
               <View style={styles.delivery}>
                 <Clock size={16} color="#6B7280" />
-                <Text style={styles.deliveryText}>25-30 min</Text>
+                <Text style={styles.deliveryText}>{restaurant.delivery_time} min</Text>
               </View>
             </View>
           </View>
@@ -77,12 +147,25 @@ export default function RestaurantDetail() {
           {filteredItems.map((item) => (
             <MenuItem
               key={item.id}
-              item={item}
+              item={{
+                id: parseInt(item.id.slice(-8), 16), // Convert UUID to number for compatibility
+                name: item.name,
+                description: item.description,
+                price: item.price,
+                image: item.image,
+                popular: item.popular
+              }}
               quantity={cart[item.id] || 0}
               onAdd={() => addToCart(item.id)}
               onRemove={() => removeFromCart(item.id)}
             />
           ))}
+          
+          {filteredItems.length === 0 && (
+            <View style={styles.emptyCategory}>
+              <Text style={styles.emptyCategoryText}>No items in this category</Text>
+            </View>
+          )}
         </View>
       </ScrollView>
 
@@ -98,7 +181,7 @@ export default function RestaurantDetail() {
               <Text style={styles.cartCount}>{getTotalItems()}</Text>
             </View>
             <Text style={styles.cartText}>View Cart</Text>
-            <Text style={styles.cartTotal}>${getCartTotal(menuItems).toFixed(2)}</Text>
+            <Text style={styles.cartTotal}>${getCartTotalForItems().toFixed(2)}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -110,6 +193,42 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
+    marginTop: 12,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#EF4444',
+    fontFamily: 'Inter-Regular',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: '#FF6B35',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
   },
   restaurantInfo: {
     backgroundColor: '#FFFFFF',
@@ -185,6 +304,15 @@ const styles = StyleSheet.create({
   menuItems: {
     backgroundColor: '#FFFFFF',
     paddingTop: 16,
+  },
+  emptyCategory: {
+    alignItems: 'center',
+    paddingVertical: 32,
+  },
+  emptyCategoryText: {
+    fontSize: 16,
+    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
   },
   cartButtonContainer: {
     backgroundColor: '#FFFFFF',

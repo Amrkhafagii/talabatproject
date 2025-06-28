@@ -1,23 +1,16 @@
 import { useState } from 'react';
 
-interface CartItem {
-  id: number;
-  name: string;
-  price: number;
-  quantity: number;
-}
-
 export function useCart() {
-  const [cart, setCart] = useState<{ [key: number]: number }>({});
+  const [cart, setCart] = useState<{ [key: string]: number }>({});
 
-  const addToCart = (itemId: number) => {
+  const addToCart = (itemId: string) => {
     setCart(prev => ({
       ...prev,
       [itemId]: (prev[itemId] || 0) + 1
     }));
   };
 
-  const removeFromCart = (itemId: number) => {
+  const removeFromCart = (itemId: string) => {
     setCart(prev => {
       const newCart = { ...prev };
       if (newCart[itemId] && newCart[itemId] > 1) {
@@ -29,15 +22,20 @@ export function useCart() {
     });
   };
 
-  const clearCart = () => {
-    setCart({});
+  const updateQuantity = (itemId: string, quantity: number) => {
+    setCart(prev => {
+      const newCart = { ...prev };
+      if (quantity <= 0) {
+        delete newCart[itemId];
+      } else {
+        newCart[itemId] = quantity;
+      }
+      return newCart;
+    });
   };
 
-  const getCartTotal = (items: any[]) => {
-    return Object.entries(cart).reduce((total, [itemId, quantity]) => {
-      const item = items.find(item => item.id === parseInt(itemId));
-      return total + (item ? item.price * quantity : 0);
-    }, 0);
+  const clearCart = () => {
+    setCart({});
   };
 
   const getTotalItems = () => {
@@ -48,8 +46,8 @@ export function useCart() {
     cart,
     addToCart,
     removeFromCart,
+    updateQuantity,
     clearCart,
-    getCartTotal,
     getTotalItems,
   };
 }
