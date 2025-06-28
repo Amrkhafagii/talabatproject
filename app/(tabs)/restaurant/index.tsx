@@ -1,24 +1,174 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Store, DollarSign, Clock, Star, TrendingUp, Bell } from 'lucide-react-native';
+import { Store, DollarSign, Clock, Star, TrendingUp, Bell, RefreshCw } from 'lucide-react-native';
 
 import StatCard from '@/components/common/StatCard';
 import OrderManagementCard from '@/components/restaurant/OrderManagementCard';
 import Button from '@/components/ui/Button';
-import { restaurantOrders } from '@/constants/data';
-
-const todayStats = {
-  revenue: 1247.50,
-  orders: 23,
-  avgOrderValue: 54.24,
-  rating: 4.6,
-};
+import { useAuth } from '@/contexts/AuthContext';
+import { 
+  getRestaurantByUserId, 
+  getRestaurantOrders, 
+  getRestaurantStats, 
+  updateOrderStatus 
+} from '@/utils/database';
+import { Restaurant, Order, RestaurantStats } from '@/types/database';
 
 export default function RestaurantDashboard() {
-  const updateOrderStatus = (orderId: number, newStatus: string) => {
-    console.log(`Update order ${orderId} to ${newStatus}`);
+  const { user } = useAuth();
+  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [stats, setStats] = useState<RestaurantStats>({
+    todayRevenue: 0,
+    todayOrders: 0,
+    avgOrderValue: 0,
+    rating: 0
+  });
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      loadRestaurantData();
+    }
+  }, [user]);
+
+  const loadRestaurantData = async () => {
+    if (!user) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Get restaurant data
+      const restaurantData = await getRestaurantByUserId(user.id);
+      if (!restaurantData) {
+        setError('No restaurant found for this user');
+        return;
+      }
+
+      setRestaurant(restaurantData);
+
+      // Load orders and stats
+      await Promise.all([
+        loadOrders(restaurantData.id),
+        loadStats(restaurantData.id)
+      ]);
+    } catch (err) {
+      console.error('Error loading restaurant data:', err);
+      setError('Failed to load restaurant data. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const loadOrders = async (restaurantId: string) => {
+    try {
+      const ordersData = await getRestaurantOrders(restaurantId);
+      setOrders(ordersData);
+    } catch (err) {
+      console.error('Error loading orders:', err);
+    }
+  };
+
+  const loadStats = async (restaurantId: string) => {
+    try {
+      const statsData = await getRestaurantStats(restaurantId);
+      setStats(statsData);
+    } catch (err) {
+      console.error('Error loading stats:', err);
+    }
+  };
+
+  const refreshData = async () => {
+    if (!restaurant) return;
+
+    try {
+      setRefreshing(true);
+      await Promise.all([
+        loadOrders(restaurant.id),
+        loadStats(restaurant.id)
+      ]);
+    } catch (err) {
+      console.error('Error refreshing data:', err);
+      Alert.alert('Error', 'Failed to refresh data');
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
+    try {
+      const success = await updateOrderStatus(orderId, newStatus);
+      if (success) {
+        // Update local state
+        setOrders(prevOrders =>
+          prevOrders.map(order =>
+            order.id === orderId ? { ...order, status: newStatus as any } : order
+          )
+        );
+        
+        // Refresh stats if order is completed
+        if (newStatus === 'delivered' && restaurant) {
+          await loadStats(restaurant.id);
+        }
+      } else {
+        Alert.alert('Error', 'Failed to update order status');
+      }
+    } catch (err) {
+      console.error('Error updating order status:', err);
+      Alert.alert('Error', 'Failed to update order status');
+    }
+  };
+
+  const formatOrderTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+    
+    if (diffInMinutes < 60) {
+      return `${diffInMinutes} min ago`;
+    } else {
+      const diffInHours = Math.floor(diffInMinutes / 60);
+      return `${diffInHours} hours ago`;
+    }
+  };
+
+  const getOrderItems = (order: Order) => {
+    if (!order.order_items) return [];
+    return order.order_items.map(item => 
+      `${item.menu_item?.name || 'Unknown Item'} x${item.quantity}`
+    );
+  };
+
+  const recentOrders = orders.slice(0, 5); // Show only recent 5 orders
+  const newOrdersCount = orders.filter(order => order.status === 'preparing').length;
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#FF6B35" />
+          <Text style={styles.loadingText}>Loading restaurant dashboard...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error || !restaurant) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error || 'Restaurant not found'}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={loadRestaurantData}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -27,16 +177,31 @@ export default function RestaurantDashboard() {
         <View style={styles.headerLeft}>
           <Store size={24} color="#FF6B35" />
           <View style={styles.headerText}>
-            <Text style={styles.restaurantName}>Mario's Pizza Palace</Text>
+            <Text style={styles.restaurantName}>{restaurant.name}</Text>
             <Text style={styles.restaurantStatus}>Open • 8:00 AM - 10:00 PM</Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.notificationButton}>
-          <Bell size={20} color="#6B7280" />
-          <View style={styles.notificationBadge}>
-            <Text style={styles.notificationCount}>3</Text>
-          </View>
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <TouchableOpacity 
+            style={styles.refreshButton} 
+            onPress={refreshData}
+            disabled={refreshing}
+          >
+            <RefreshCw 
+              size={20} 
+              color="#6B7280" 
+              style={refreshing ? styles.spinning : undefined}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.notificationButton}>
+            <Bell size={20} color="#6B7280" />
+            {newOrdersCount > 0 && (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationCount}>{newOrdersCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -46,25 +211,25 @@ export default function RestaurantDashboard() {
           <View style={styles.statsGrid}>
             <StatCard
               icon={DollarSign}
-              value={`$${todayStats.revenue.toFixed(2)}`}
+              value={`$${stats.todayRevenue.toFixed(2)}`}
               label="Revenue"
               iconColor="#10B981"
             />
             <StatCard
               icon={Clock}
-              value={todayStats.orders}
+              value={stats.todayOrders}
               label="Orders"
               iconColor="#3B82F6"
             />
             <StatCard
               icon={TrendingUp}
-              value={`$${todayStats.avgOrderValue.toFixed(2)}`}
+              value={`$${stats.avgOrderValue.toFixed(2)}`}
               label="Avg Order"
               iconColor="#F59E0B"
             />
             <StatCard
               icon={Star}
-              value={todayStats.rating}
+              value={stats.rating.toFixed(1)}
               label="Rating"
               iconColor="#FFB800"
             />
@@ -75,22 +240,37 @@ export default function RestaurantDashboard() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Orders</Text>
-            <TouchableOpacity>
-              <Text style={styles.viewAll}>View All</Text>
+            <TouchableOpacity onPress={refreshData}>
+              <Text style={styles.viewAll}>Refresh</Text>
             </TouchableOpacity>
           </View>
           
           <View style={styles.ordersContainer}>
-            {restaurantOrders.map((order) => (
+            {recentOrders.map((order) => (
               <OrderManagementCard
                 key={order.id}
-                order={order}
-                onAccept={order.status === 'new' ? () => updateOrderStatus(order.id, 'preparing') : undefined}
-                onReject={order.status === 'new' ? () => updateOrderStatus(order.id, 'rejected') : undefined}
-                onMarkReady={order.status === 'preparing' ? () => updateOrderStatus(order.id, 'ready') : undefined}
-                onMarkDelivered={order.status === 'ready' ? () => updateOrderStatus(order.id, 'delivered') : undefined}
+                order={{
+                  id: parseInt(order.id.slice(-8), 16), // Convert UUID to number for compatibility
+                  orderNumber: `#${order.id.slice(-6).toUpperCase()}`,
+                  customer: `Customer ${order.user_id.slice(-4)}`,
+                  items: getOrderItems(order),
+                  total: order.total,
+                  status: order.status === 'preparing' ? 'new' : order.status === 'ready' ? 'ready' : 'preparing',
+                  time: formatOrderTime(order.created_at)
+                }}
+                onAccept={order.status === 'preparing' ? () => handleUpdateOrderStatus(order.id, 'ready') : undefined}
+                onReject={order.status === 'preparing' ? () => handleUpdateOrderStatus(order.id, 'cancelled') : undefined}
+                onMarkReady={order.status === 'preparing' ? () => handleUpdateOrderStatus(order.id, 'ready') : undefined}
+                onMarkDelivered={order.status === 'ready' ? () => handleUpdateOrderStatus(order.id, 'on_the_way') : undefined}
               />
             ))}
+
+            {recentOrders.length === 0 && (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyTitle}>No orders yet</Text>
+                <Text style={styles.emptyText}>New orders will appear here</Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -105,8 +285,8 @@ export default function RestaurantDashboard() {
               style={styles.actionButton}
             />
             <Button
-              title="View Analytics"
-              onPress={() => console.log('View Analytics')}
+              title="View All Orders"
+              onPress={() => console.log('View All Orders')}
               variant="outline"
               style={styles.actionButton}
             />
@@ -128,6 +308,42 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F9FAFB',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
+    marginTop: 12,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#EF4444',
+    fontFamily: 'Inter-Regular',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: '#FF6B35',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -141,9 +357,11 @@ const styles = StyleSheet.create({
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   headerText: {
     marginLeft: 12,
+    flex: 1,
   },
   restaurantName: {
     fontSize: 18,
@@ -154,6 +372,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#10B981',
     fontFamily: 'Inter-Regular',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  refreshButton: {
+    padding: 8,
+    marginRight: 8,
+  },
+  spinning: {
+    transform: [{ rotate: '180deg' }],
   },
   notificationButton: {
     position: 'relative',
@@ -204,6 +433,21 @@ const styles = StyleSheet.create({
   },
   ordersContainer: {
     paddingHorizontal: 20,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 32,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
+    color: '#111827',
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
   },
   quickActions: {
     paddingHorizontal: 20,

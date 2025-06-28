@@ -144,3 +144,104 @@ export async function getUserOrders(userId: string): Promise<Order[]> {
 
   return data || [];
 }
+
+// Restaurant Orders Management
+export async function getRestaurantOrders(restaurantId: string): Promise<Order[]> {
+  const { data, error } = await supabase
+    .from('orders')
+    .select(`
+      *,
+      order_items(
+        *,
+        menu_item:menu_items(*)
+      )
+    `)
+    .eq('restaurant_id', restaurantId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching restaurant orders:', error);
+    return [];
+  }
+
+  return data || [];
+}
+
+export async function updateOrderStatus(orderId: string, status: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('orders')
+    .update({ status })
+    .eq('id', orderId);
+
+  if (error) {
+    console.error('Error updating order status:', error);
+    return false;
+  }
+
+  return true;
+}
+
+// Restaurant Analytics
+export async function getRestaurantStats(restaurantId: string): Promise<{
+  todayRevenue: number;
+  todayOrders: number;
+  avgOrderValue: number;
+  rating: number;
+}> {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayISO = today.toISOString();
+
+  // Get today's orders
+  const { data: todayOrders, error: ordersError } = await supabase
+    .from('orders')
+    .select('total')
+    .eq('restaurant_id', restaurantId)
+    .gte('created_at', todayISO);
+
+  if (ordersError) {
+    console.error('Error fetching today orders:', ordersError);
+    return { todayRevenue: 0, todayOrders: 0, avgOrderValue: 0, rating: 0 };
+  }
+
+  // Get restaurant rating
+  const { data: restaurant, error: restaurantError } = await supabase
+    .from('restaurants')
+    .select('rating')
+    .eq('id', restaurantId)
+    .single();
+
+  if (restaurantError) {
+    console.error('Error fetching restaurant rating:', restaurantError);
+  }
+
+  const revenue = todayOrders?.reduce((sum, order) => sum + order.total, 0) || 0;
+  const orderCount = todayOrders?.length || 0;
+  const avgOrderValue = orderCount > 0 ? revenue / orderCount : 0;
+  const rating = restaurant?.rating || 0;
+
+  return {
+    todayRevenue: revenue,
+    todayOrders: orderCount,
+    avgOrderValue,
+    rating
+  };
+}
+
+// Get restaurant by user (for restaurant owners)
+export async function getRestaurantByUserId(userId: string): Promise<Restaurant | null> {
+  // For now, we'll assume the first restaurant belongs to the user
+  // In a real app, you'd have a user_restaurants table or similar
+  const { data, error } = await supabase
+    .from('restaurants')
+    .select('*')
+    .limit(1)
+    .single();
+
+  if (error) {
+    console.error('Error fetching user restaurant:', error);
+    return null;
+  }
+
+  return data;
+}

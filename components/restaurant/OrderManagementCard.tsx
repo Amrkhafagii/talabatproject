@@ -71,7 +71,7 @@ export default function OrderManagementCard({
             <Button title="Mark Ready" onPress={onMarkReady} size="small" />
           )}
           {order.status === 'ready' && onMarkDelivered && (
-            <Button title="Delivered" onPress={onMarkDelivered} variant="secondary" size="small" />
+            <Button title="Out for Delivery" onPress={onMarkDelivered} variant="secondary" size="small" />
           )}
         </View>
       </View>

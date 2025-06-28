@@ -34,7 +34,7 @@ export interface Order {
   user_id: string;
   restaurant_id: string;
   total: number;
-  status: 'preparing' | 'on_the_way' | 'delivered';
+  status: 'preparing' | 'ready' | 'on_the_way' | 'delivered';
   delivery_address: string;
   created_at: string;
   restaurant?: Restaurant;
@@ -49,4 +49,11 @@ export interface OrderItem {
   price: number;
   created_at: string;
   menu_item?: MenuItem;
+}
+
+export interface RestaurantStats {
+  todayRevenue: number;
+  todayOrders: number;
+  avgOrderValue: number;
+  rating: number;
 }
